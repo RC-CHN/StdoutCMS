@@ -24,6 +24,16 @@ const router = createRouter({
       name: 'projects',
       component: () => import('../views/ProjectsView.vue'),
     },
+    {
+      path: '/error',
+      name: 'error',
+      component: () => import('../views/ErrorView.vue'),
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      redirect: () => ({ name: 'error', query: { code: '404' } }),
+    },
   ],
 })
 

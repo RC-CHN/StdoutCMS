@@ -15,14 +15,14 @@
 }
 
 body.dark-mode {
-  --bg: #111111;
-  --fg: #f4f4f4;
-  --muted: #aaaaaa;
-  --border: #f4f4f4;
-  --shadow: 5px 5px 0px #f4f4f4;
-  --grid-color: rgba(255, 255, 255, 0.05);
-  --selection-bg: #f4f4f4;
-  --selection-fg: #111111;
+  --bg: #1a1a1c;
+  --fg: #d4d4d4;
+  --muted: #808080;
+  --border: #555555;
+  --shadow: 5px 5px 0px rgba(0, 0, 0, 0.35);
+  --grid-color: rgba(255, 255, 255, 0.03);
+  --selection-bg: #d4d4d4;
+  --selection-fg: #1a1a1c;
 }
 
 * {
