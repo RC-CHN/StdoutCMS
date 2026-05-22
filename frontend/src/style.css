@@ -1,0 +1,158 @@
+/* ============================================
+   SYS_BLOG.EXE — Terminal Brutalist Theme
+   ============================================ */
+
+:root {
+  --bg: #f4f4f4;
+  --fg: #111111;
+  --muted: #666666;
+  --border: #111111;
+  --shadow: 5px 5px 0px #111111;
+  --grid-color: rgba(0, 0, 0, 0.05);
+  --font-main: 'Courier New', Courier, monospace;
+  --selection-bg: #111111;
+  --selection-fg: #f4f4f4;
+}
+
+body.dark-mode {
+  --bg: #111111;
+  --fg: #f4f4f4;
+  --muted: #aaaaaa;
+  --border: #f4f4f4;
+  --shadow: 5px 5px 0px #f4f4f4;
+  --grid-color: rgba(255, 255, 255, 0.05);
+  --selection-bg: #f4f4f4;
+  --selection-fg: #111111;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-fg);
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-main);
+  font-size: 16px;
+  line-height: 1.7;
+  transition: background-color 0.3s, color 0.3s;
+  overflow-x: hidden;
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* 按钮 */
+button, .btn {
+  background: var(--bg);
+  color: var(--fg);
+  border: 2px solid var(--border);
+  padding: 5px 15px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 3px 3px 0px var(--border);
+  transition: all 0.1s;
+  text-transform: uppercase;
+  text-decoration: none;
+  display: inline-block;
+}
+
+button:active, .btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0px 0px 0px var(--border);
+}
+
+button:hover, .btn:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+/* 导航链接 */
+nav a {
+  color: var(--fg);
+  text-decoration: none;
+  border-bottom: 2px dashed var(--border);
+  padding-bottom: 2px;
+}
+
+nav a:hover, nav a.router-link-active {
+  background-color: var(--fg);
+  color: var(--bg);
+  border-bottom-style: solid;
+}
+
+nav a::before { content: "> "; }
+
+/* 跑马灯 */
+.marquee-container {
+  border-top: 2px solid var(--border);
+  border-bottom: 2px solid var(--border);
+  padding: 5px 0;
+  overflow: hidden;
+  white-space: nowrap;
+  margin-top: 4rem;
+  background: var(--fg);
+  color: var(--bg);
+  font-weight: bold;
+}
+
+.marquee-content {
+  display: inline-block;
+  padding-left: 100%;
+  animation: marquee 20s linear infinite;
+}
+
+@keyframes marquee {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-100%, 0); }
+}
+
+/* 闪烁光标 */
+.cursor {
+  display: inline-block;
+  width: 12px;
+  height: 1.2em;
+  background-color: var(--fg);
+  vertical-align: middle;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Footer */
+footer {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+}
+
+/* 响应式 */
+@media (max-width: 600px) {
+  .container { padding: 1.5rem 1rem; }
+  button { width: 100%; text-align: center; }
+}
