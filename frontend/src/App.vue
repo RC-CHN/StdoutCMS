@@ -84,8 +84,9 @@ const activeArticleSlug = computed(() =>
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
+  padding: 0 1rem;
 }
 
 .app-body {
@@ -111,8 +112,8 @@ const activeArticleSlug = computed(() =>
 /* ---- 主内容 ---- */
 .main-content {
   flex: 1;
-  padding: 2rem 2.5rem;
-  max-width: 750px;
+  padding: 1.5rem 1rem;
+  max-width: none;
 }
 
 /* ---- prompt ---- */
@@ -177,7 +178,7 @@ const activeArticleSlug = computed(() =>
   }
 
   .main-content {
-    padding: 1.5rem 1rem;
+    padding: 1rem 0.75rem;
   }
 }
 </style>

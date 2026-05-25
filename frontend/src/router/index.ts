@@ -25,6 +25,21 @@ const router = createRouter({
       component: () => import('../views/ProjectsView.vue'),
     },
     {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('../views/admin/PostListView.vue'),
+    },
+    {
+      path: '/admin/edit',
+      name: 'admin-new',
+      component: () => import('../views/admin/PostEditView.vue'),
+    },
+    {
+      path: '/admin/edit/:slug',
+      name: 'admin-edit',
+      component: () => import('../views/admin/PostEditView.vue'),
+    },
+    {
       path: '/error',
       name: 'error',
       component: () => import('../views/ErrorView.vue'),

@@ -68,6 +68,13 @@ const entries = computed<DirEntry[]>(() => {
       to: '/projects',
       isActive: route.name === 'projects',
     },
+    {
+      date: '',
+      name: 'admin',
+      suffix: '/',
+      to: '/admin',
+      isActive: route.name === 'admin' || route.name === 'admin-new' || route.name === 'admin-edit',
+    },
   ]
 })
 </script>
