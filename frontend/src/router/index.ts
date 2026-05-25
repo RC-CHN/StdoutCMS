@@ -49,6 +49,30 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/admin/projects',
+      name: 'admin-projects',
+      component: () => import('../views/admin/ProjectListView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/projects/edit',
+      name: 'admin-projects-new',
+      component: () => import('../views/admin/ProjectEditView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/projects/edit/:id',
+      name: 'admin-projects-edit',
+      component: () => import('../views/admin/ProjectEditView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/about',
+      name: 'admin-about',
+      component: () => import('../views/admin/AboutEditView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/error',
       name: 'error',
       component: () => import('../views/ErrorView.vue'),

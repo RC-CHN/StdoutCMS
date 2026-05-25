@@ -109,6 +109,10 @@ func main() {
 		admin.PUT("/posts/:slug", handler.UpdatePost(pg))
 		admin.DELETE("/posts/:slug", handler.DeletePost(pg))
 		admin.POST("/upload", handler.UploadImage(s3, cfg))
+		admin.GET("/projects", handler.ListProjectsAdmin(pg))
+		admin.POST("/projects", handler.CreateProject(pg))
+		admin.PUT("/projects/:id", handler.UpdateProject(pg))
+		admin.DELETE("/projects/:id", handler.DeleteProject(pg))
 	}
 
 	logger.Info("server starting", "port", cfg.AppPort)

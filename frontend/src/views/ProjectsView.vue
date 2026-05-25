@@ -1,23 +1,30 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { projects } from '../mocks/projects'
+import { ref, onMounted } from 'vue'
+import { listProjects } from '../api/projects'
+import type { ProjectPayload } from '../api/projects'
 
-const PAGE_SIZE = 2
-const page = ref(0)
-const totalPages = computed(() => Math.ceil(projects.length / PAGE_SIZE))
-const paged = computed(() => {
-  const start = page.value * PAGE_SIZE
-  return projects.slice(start, start + PAGE_SIZE)
+const projects = ref<ProjectPayload[]>([])
+const loading = ref(false)
+
+onMounted(async () => {
+  loading.value = true
+  try {
+    const data = await listProjects()
+    projects.value = data.projects
+  } catch {
+    // keep default empty
+  } finally {
+    loading.value = false
+  }
 })
-
-function nextPage() { if (page.value < totalPages.value - 1) page.value++ }
-function prevPage() { if (page.value > 0) page.value-- }
 </script>
 
 <template>
   <h1 class="projects-title">> projects/__init__.py</h1>
 
-  <div class="project-card" v-for="p in paged" :key="p.name">
+  <div v-if="loading" class="status-line">loading projects...</div>
+
+  <div class="project-card" v-for="p in projects" :key="p.name">
     <h2>{{ p.name }}</h2>
     <p>{{ p.description }}</p>
     <div class="project-meta">
@@ -28,16 +35,6 @@ function prevPage() { if (page.value > 0) page.value-- }
   </div>
 
   <div class="eof-marker">EOF</div>
-
-  <nav class="page-nav" v-if="totalPages > 1">
-    <button class="btn" :disabled="page === 0" @click="prevPage">
-      &lt;&lt; prev
-    </button>
-    <span class="page-info">{{ page + 1 }} / {{ totalPages }}</span>
-    <button class="btn" :disabled="page >= totalPages - 1" @click="nextPage">
-      next &gt;&gt;
-    </button>
-  </nav>
 </template>
 
 <style scoped>

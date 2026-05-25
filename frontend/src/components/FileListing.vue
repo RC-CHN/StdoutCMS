@@ -79,7 +79,7 @@ const entries = computed<DirEntry[]>(() => {
       name: 'admin',
       suffix: '/',
       to: '/admin',
-      isActive: route.name === 'admin' || route.name === 'admin-new' || route.name === 'admin-edit',
+      isActive: !!route.name?.toString().startsWith('admin-'),
     })
   }
 

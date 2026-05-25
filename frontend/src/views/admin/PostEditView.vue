@@ -5,6 +5,7 @@ import { getPostAdmin, createPost, updatePost } from '../../api/posts'
 import type { PostPayload } from '../../api/posts'
 import { useDraft } from '../../composables/useDraft'
 import ArticleRenderer from '../../components/ArticleRenderer.vue'
+import AdminNav from '../../components/AdminNav.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -129,6 +130,8 @@ function statusClass() {
 </script>
 
 <template>
+  <AdminNav />
+
   <div class="editor-header">
     <div class="editor-prompt">
       root@k8s-node ~/admin $ <span class="muted">{{ isEdit ? `vim ${slugParam}.md` : 'vim new_post.md' }}</span>

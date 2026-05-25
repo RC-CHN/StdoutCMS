@@ -165,7 +165,7 @@ func (p *Postgres) DeletePost(slug string) error {
 func (p *Postgres) ListProjects() ([]Project, error) {
 	ctx := context.Background()
 	rows, err := p.pool.Query(ctx, `
-		SELECT name, description, lang, status, url, sort_order
+		SELECT id, name, description, lang, status, url, sort_order
 		FROM projects
 		ORDER BY sort_order, created_at DESC
 	`)
@@ -177,7 +177,7 @@ func (p *Postgres) ListProjects() ([]Project, error) {
 	var projects []Project
 	for rows.Next() {
 		var pr Project
-		if err := rows.Scan(&pr.Name, &pr.Description, &pr.Lang, &pr.Status, &pr.URL, &pr.SortOrder); err != nil {
+		if err := rows.Scan(&pr.ID, &pr.Name, &pr.Description, &pr.Lang, &pr.Status, &pr.URL, &pr.SortOrder); err != nil {
 			return nil, err
 		}
 		projects = append(projects, pr)
@@ -185,13 +185,18 @@ func (p *Postgres) ListProjects() ([]Project, error) {
 	return projects, rows.Err()
 }
 
+// ListProjectsAdmin returns all projects for the admin panel.
+func (p *Postgres) ListProjectsAdmin() ([]Project, error) {
+	return p.ListProjects()
+}
+
 func (p *Postgres) GetProject(id int) (*Project, error) {
 	ctx := context.Background()
 	var pr Project
 	err := p.pool.QueryRow(ctx, `
-		SELECT name, description, lang, status, url, sort_order
+		SELECT id, name, description, lang, status, url, sort_order
 		FROM projects WHERE id=$1
-	`, id).Scan(&pr.Name, &pr.Description, &pr.Lang, &pr.Status, &pr.URL, &pr.SortOrder)
+	`, id).Scan(&pr.ID, &pr.Name, &pr.Description, &pr.Lang, &pr.Status, &pr.URL, &pr.SortOrder)
 	if err != nil {
 		return nil, err
 	}

@@ -216,6 +216,69 @@ func DeletePost(pg *store.Postgres) gin.HandlerFunc {
 	}
 }
 
+// ---- Admin Projects ----
+
+func ListProjectsAdmin(pg *store.Postgres) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		projects, err := pg.ListProjectsAdmin()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"projects": projects})
+	}
+}
+
+func CreateProject(pg *store.Postgres) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var pr store.Project
+		if err := c.ShouldBindJSON(&pr); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := pg.CreateProject(&pr); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{"status": "created"})
+	}
+}
+
+func UpdateProject(pg *store.Postgres) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+		var pr store.Project
+		if err := c.ShouldBindJSON(&pr); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := pg.UpdateProject(id, &pr); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "updated"})
+	}
+}
+
+func DeleteProject(pg *store.Postgres) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+		if err := pg.DeleteProject(id); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "deleted"})
+	}
+}
+
 // ---- Admin Upload ----
 
 func UploadImage(s3 *storage.S3, cfg *config.Config) gin.HandlerFunc {

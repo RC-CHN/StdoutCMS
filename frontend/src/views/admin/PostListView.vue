@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { listPostsAdmin, deletePost as apiDeletePost } from '../../api/posts'
 import type { PostPayload } from '../../api/posts'
+import AdminNav from '../../components/AdminNav.vue'
 
 const router = useRouter()
 
@@ -50,6 +51,8 @@ onMounted(fetchPosts)
 </script>
 
 <template>
+  <AdminNav />
+
   <div class="admin-prompt">
     root@k8s-node ~/admin $ <span class="muted">ls -la ./posts</span>
   </div>
