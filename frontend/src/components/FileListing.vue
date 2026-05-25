@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
+import { useAuth } from '../composables/useAuth'
 import type { Post } from '../mocks/posts'
 
 defineEmits<{
@@ -14,6 +15,7 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
+const { isLoggedIn } = useAuth()
 
 type DirEntry = {
   date: string
@@ -46,7 +48,7 @@ const entries = computed<DirEntry[]>(() => {
     return result
   }
 
-  return [
+  const base: DirEntry[] = [
     {
       date: '2023-10-25',
       name: 'articles',
@@ -68,14 +70,20 @@ const entries = computed<DirEntry[]>(() => {
       to: '/projects',
       isActive: route.name === 'projects',
     },
-    {
+  ]
+
+  // 登录后才显示 admin 入口
+  if (isLoggedIn.value) {
+    base.push({
       date: '',
       name: 'admin',
       suffix: '/',
       to: '/admin',
       isActive: route.name === 'admin' || route.name === 'admin-new' || route.name === 'admin-edit',
-    },
-  ]
+    })
+  }
+
+  return base
 })
 </script>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuth } from '../composables/useAuth'
 
 defineEmits<{
   'menu-click': []
@@ -8,6 +9,7 @@ defineEmits<{
 
 const route = useRoute()
 const router = useRouter()
+const { isLoggedIn, clearToken } = useAuth()
 
 const THEME_KEY = 'blog_theme_pref'
 
@@ -17,10 +19,16 @@ function toggleTheme() {
   localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light')
 }
 
+function handleLogout() {
+  clearToken()
+  router.push('/')
+}
+
 const typeText = computed(() => {
   if (route.name === 'article') return 'rendering document...'
   if (route.name === 'about') return 'cat about.md...'
   if (route.name === 'projects') return 'executing projects.sh...'
+  if (route.name === 'login') return 'authenticating...'
   return 'ONLINE & READY...'
 })
 
@@ -57,7 +65,10 @@ onMounted(() => {
       </div>
     </div>
 
-    <button class="theme-btn" @click="toggleTheme">[ INVERT_COLORS ]</button>
+    <div class="header-actions">
+      <button v-if="isLoggedIn" class="btn btn-sm" @click="handleLogout">[ LOGOUT ]</button>
+      <button class="btn btn-sm" @click="toggleTheme">[ INVERT_COLORS ]</button>
+    </div>
   </header>
 </template>
 
@@ -88,8 +99,20 @@ onMounted(() => {
   margin-top: 5px;
 }
 
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .theme-btn {
   flex-shrink: 0;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 0.8rem;
 }
 
 /* 汉堡按钮 */

@@ -12,8 +12,8 @@
 ┌─────────────────────────────────────────────────────────┐
 │                     Client Browser                       │
 │  ┌──────────────┐  ┌──────────────────────────────────┐ │
-│  │  Vue3 SPA    │  │  /admin 编辑器 (需 session)      │ │
-│  │  静态资源    │  │  增删改文章/项目/图片             │ │
+│  │  Vue3 SPA    │  │  /login  (手动输入，无入口)       │ │
+│  │  静态资源    │  │  /admin 编辑器 (需 session)      │ │
 │  └──────────────┘  └──────────────────────────────────┘ │
 └──────────┬────────────────────┬─────────────────────────┘
            │                    │
@@ -45,6 +45,31 @@
 
 ---
 
+## 认证与访问控制
+
+### 前端行为
+
+| 状态 | 表现 |
+|------|------|
+| 未登录 | 侧边栏无 `admin/` 入口；无其他跳转链接；`/admin/*` 被路由守卫拦截重定向到 `/login` |
+| 已登录 | 侧边栏显示 `admin/` 入口；Header 右上角显示 `[ LOGOUT ]`；可正常访问编辑器 |
+
+### 登录流程
+
+1. 用户手动访问 `/login`
+2. 提交 username + password → `POST /api/v1/admin/login`
+3. 后端验证后返回 `token`，前端存入 **cookie** (SameSite=Strict) + localStorage fallback
+4. 前端路由守卫 (`router.beforeEach`) 检查 `meta.requiresAuth`
+5. 登出时清除 cookie + localStorage，跳转首页
+
+### Session 存储
+
+- 前端：`document.cookie` 优先，localStorage fallback
+- 后端：Redis `session:{token}` → JSON `{ user_id, username, expires_at }`
+- 后续 API 请求带 `Authorization: Bearer {token}` header（或 cookie 自动携带）
+
+---
+
 ## 组件及职责
 
 | 组件 | 技术选型 | 职责 |
@@ -73,7 +98,7 @@ GET   /api/v1/projects/:id    单个项目详情
 
 ```
 POST   /api/v1/admin/login         登录 → 生成 session 存 Redis
-DELETE /api/v1/admin/logout        登出
+DELETE /api/v1/admin/logout        登出 → 清除 Redis session
 
 POST   /api/v1/admin/posts         新建文章
 PUT    /api/v1/admin/posts/:slug   编辑文章
@@ -101,6 +126,7 @@ CREATE TABLE posts (
     content    TEXT NOT NULL,           -- markdown 原文
     excerpt    TEXT,
     tags       TEXT[],                  -- PG 数组
+    author     VARCHAR(100) DEFAULT 'root',
     word_count INT DEFAULT 0,
     read_time  VARCHAR(20),
     published  BOOLEAN DEFAULT false,
@@ -153,17 +179,23 @@ bucket: blog-assets/
 StdoutCMS/
 ├── frontend/                  # Vue3 + TypeScript
 │   ├── src/
-│   │   ├── api/               # API 调用封装
+│   │   ├── api/               # API 调用封装 (待建)
 │   │   │   ├── posts.ts
 │   │   │   ├── projects.ts
 │   │   │   └── auth.ts
 │   │   ├── components/        # 复用组件
+│   │   ├── composables/       # 🆕 组合式逻辑
+│   │   │   ├── useAuth.ts     # 认证状态管理
+│   │   │   └── useDraft.ts    # 编辑器草稿自动保存
 │   │   ├── views/             # 页面
 │   │   │   ├── HomeView.vue
 │   │   │   ├── ArticleView.vue
 │   │   │   ├── AboutView.vue
 │   │   │   ├── ProjectsView.vue
-│   │   │   └── AdminView.vue  # 🆕 管理后台
+│   │   │   ├── LoginView.vue       # 🆕 登录页
+│   │   │   └── admin/
+│   │   │       ├── PostListView.vue   # 🆕 文章管理列表
+│   │   │       └── PostEditView.vue   # 🆕 Markdown 编辑器
 │   │   ├── router/
 │   │   ├── mocks/             # 开发用 mock 数据
 │   │   └── utils/
@@ -203,11 +235,12 @@ StdoutCMS/
 ## 开发计划
 
 0. [x] 前端脚手架 + 设计稿落地
-1. [ ] `docker-compose.yml` — 起 Postgres + Redis + MinIO
-2. [ ] Go 项目骨架 + `/health` 端点
-3. [ ] PostgreSQL store — migration + CRUD
-4. [ ] API handlers — posts / projects 增删改查
-5. [ ] Redis cache — API 读缓存 + admin session
-6. [ ] MinIO integration — 图片上传/删除
-7. [ ] 前端数据层 — 把 mock 换成 API 调用
-8. [ ] 编辑器页面 — `/admin` 管理后台
+1. [x] `/admin` 管理后台 + Markdown 编辑器 + 视图切换 + 自动保存
+2. [x] 登录/认证系统 — `/login` 页面 + 路由守卫 + session 管理
+3. [ ] `docker-compose.yml` — 起 Postgres + Redis + MinIO
+4. [ ] Go 项目骨架 + `/health` 端点
+5. [ ] PostgreSQL store — migration + CRUD
+6. [ ] API handlers — posts / projects 增删改查
+7. [ ] Redis cache — API 读缓存 + admin session
+8. [ ] MinIO integration — 图片上传/删除
+9. [ ] 前端数据层 — 把 mock 换成 API 调用

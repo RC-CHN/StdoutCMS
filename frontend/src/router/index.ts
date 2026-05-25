@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import { useAuth } from '../composables/useAuth'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -25,19 +26,27 @@ const router = createRouter({
       component: () => import('../views/ProjectsView.vue'),
     },
     {
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/LoginView.vue'),
+    },
+    {
       path: '/admin',
       name: 'admin',
       component: () => import('../views/admin/PostListView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/admin/edit',
       name: 'admin-new',
       component: () => import('../views/admin/PostEditView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/admin/edit/:slug',
       name: 'admin-edit',
       component: () => import('../views/admin/PostEditView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/error',
@@ -50,6 +59,16 @@ const router = createRouter({
       redirect: () => ({ name: 'error', query: { code: '404' } }),
     },
   ],
+})
+
+// 路由守卫: admin 路由需要登录
+router.beforeEach((to, _from, next) => {
+  const { isLoggedIn } = useAuth()
+  if (to.meta.requiresAuth && !isLoggedIn.value) {
+    next({ name: 'login' })
+  } else {
+    next()
+  }
 })
 
 export default router
