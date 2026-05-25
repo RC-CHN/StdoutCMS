@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { posts } from './mocks/posts'
 import TerminalHeader from './components/TerminalHeader.vue'
 import TerminalFooter from './components/TerminalFooter.vue'
 import FileListing from './components/FileListing.vue'
@@ -62,7 +61,7 @@ const activeArticleSlug = computed(() =>
           <FileListing
             :directory="listingMode"
             :active-slug="activeArticleSlug"
-            :posts="posts"
+            :posts="[]"
             @navigate="closeSidebar"
           />
         </div>

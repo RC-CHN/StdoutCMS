@@ -1,2 +1,4 @@
 .rcoder/
 References/
+backend/server
+backend/.env

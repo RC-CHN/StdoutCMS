@@ -108,9 +108,65 @@ POST   /api/v1/admin/projects      新建项目
 PUT    /api/v1/admin/projects/:id  编辑项目
 DELETE /api/v1/admin/projects/:id  删除项目
 
-POST   /api/v1/admin/upload        上传图片 → MinIO
+POST   /api/v1/admin/upload        上传图片 → S3/MinIO
 DELETE /api/v1/admin/images/:id    删除图片
 ```
+
+---
+
+## 图片上传设计
+
+### 原则
+
+- 编辑器内**不显示任何上传状态指示**（无进度条、无灰色、无 spinning）
+- 图片占位符与普通 markdown 文本完全一致
+- 上传失败不弹窗提示，用户手动删除重新粘贴
+- 追求本地文本编辑器的朴素体验
+
+### 流程
+
+```
+用户粘贴 / 拖拽 / 选择图片文件
+    ↓
+前端捕获文件，在光标处插入占位符文本：
+    ![image](uploading-${uuid})
+    ↓
+异步 POST /api/v1/admin/upload (multipart/form-data)
+    ↓
+后端：S3 PutObject → 返回 { url: "${CDN_BASE_URL}/images/${uuid}.ext" }
+    ↓
+前端正则替换占位符：
+    ![image](uploading-${uuid})
+    → ![image](https://cdn.example.com/images/uuid.png)
+```
+
+### 失败处理
+
+- 上传中：占位符就是普通 markdown 文本，预览时显示 broken image
+- 上传失败：占位符保持原样 `![image](uploading-${uuid})`，用户手动删掉重来
+- 不显示任何 toast / 弹窗 / 状态提示
+
+### 存储配置抽象
+
+```go
+type StorageConfig struct {
+    Provider   string // "s3" (通用，MinIO 也用 aws-sdk)
+    Endpoint   string // "http://localhost:9000" 或 "https://s3.amazonaws.com"
+    Bucket     string // "blog-assets"
+    Region     string // "us-east-1" (S3) / "" (MinIO 忽略)
+    AccessKey  string
+    SecretKey  string
+    CDNBaseURL string // 对外访问图片的 base URL
+    UseSSL     bool
+}
+```
+
+| 场景 | Endpoint | Region | CDNBaseURL |
+|------|----------|--------|------------|
+| 本地 MinIO | `http://localhost:9000` | `""` | `http://localhost:9000/blog-assets` |
+| 公网 MinIO | `https://minio.example.com` | `""` | `https://minio.example.com/blog-assets` |
+| AWS S3 | `https://s3.amazonaws.com` | `us-east-1` | `https://cdn.example.com` |
+| Cloudflare R2 | `https://<account>.r2.cloudflarestorage.com` | `auto` | `https://pub-<id>.r2.dev` |
 
 ---
 

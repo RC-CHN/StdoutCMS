@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
-import type { Post } from '../mocks/posts'
+import type { PostPayload } from '../api/posts'
 
 defineEmits<{
   navigate: []
@@ -11,7 +11,7 @@ defineEmits<{
 const props = defineProps<{
   directory: 'root' | 'articles'
   activeSlug?: string
-  posts?: Post[]
+  posts?: PostPayload[]
 }>()
 
 const route = useRoute()
@@ -38,7 +38,7 @@ const entries = computed<DirEntry[]>(() => {
     ]
     for (const post of props.posts ?? []) {
       result.push({
-        date: post.date,
+        date: post.createdAt || '',
         name: post.slug,
         suffix: '.md',
         to: `/article/${post.slug}`,

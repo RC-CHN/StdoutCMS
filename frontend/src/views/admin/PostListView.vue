@@ -1,33 +1,52 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { posts } from '../../mocks/posts'
+import { listPostsAdmin, deletePost as apiDeletePost } from '../../api/posts'
+import type { PostPayload } from '../../api/posts'
 
 const router = useRouter()
 
 const PAGE_SIZE = 5
 const page = ref(0)
-const totalPages = computed(() => Math.ceil(posts.length / PAGE_SIZE))
-const paged = computed(() => {
-  const start = page.value * PAGE_SIZE
-  return posts.slice(start, start + PAGE_SIZE)
-})
+const posts = ref<PostPayload[]>([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref('')
 
-function nextPage() { if (page.value < totalPages.value - 1) page.value++ }
-function prevPage() { if (page.value > 0) page.value-- }
+const totalPages = computed(() => Math.ceil(total.value / PAGE_SIZE))
 
-function formatDate(iso: string) {
-  return iso
+async function fetchPosts() {
+  loading.value = true
+  error.value = ''
+  try {
+    const apiPage = page.value + 1
+    const data = await listPostsAdmin(apiPage, PAGE_SIZE)
+    posts.value = data.posts
+    total.value = data.total
+  } catch (e: any) {
+    error.value = e.message || 'failed to load posts'
+  } finally {
+    loading.value = false
+  }
 }
+
+function nextPage() { if (page.value < totalPages.value - 1) { page.value++; fetchPosts() } }
+function prevPage() { if (page.value > 0) { page.value--; fetchPosts() } }
 
 function wordCount(content: string) {
   return content.replace(/\s/g, '').length
 }
 
-function deletePost(slug: string) {
-  // TODO: wire to backend
-  window.alert(`TODO: delete ${slug}.md`)
+async function deletePost(slug: string) {
+  try {
+    await apiDeletePost(slug)
+    fetchPosts()
+  } catch (e: any) {
+    window.alert('DELETE failed: ' + (e.message || 'unknown'))
+  }
 }
+
+onMounted(fetchPosts)
 </script>
 
 <template>
@@ -35,7 +54,10 @@ function deletePost(slug: string) {
     root@k8s-node ~/admin $ <span class="muted">ls -la ./posts</span>
   </div>
 
-  <table class="post-table">
+  <div v-if="loading" class="status-line">loading posts...</div>
+  <div v-else-if="error" class="status-line" style="color: #ff4444;">ERROR: {{ error }}</div>
+
+  <table class="post-table" v-else>
     <thead>
       <tr>
         <th>PERMISSIONS</th>
@@ -47,11 +69,11 @@ function deletePost(slug: string) {
       </tr>
     </thead>
     <tbody>
-      <tr v-for="post in paged" :key="post.slug">
+      <tr v-for="post in posts" :key="post.slug">
         <td>-rw-r--r--</td>
         <td>{{ post.author }}</td>
         <td>{{ wordCount(post.content) }}B</td>
-        <td>{{ formatDate(post.date) }}</td>
+        <td>{{ post.createdAt ? post.createdAt.slice(0, 10) : '—' }}</td>
         <td>
           <RouterLink :to="`/article/${post.slug}`" class="file-link">
             {{ post.slug }}.md
@@ -74,7 +96,7 @@ function deletePost(slug: string) {
 
   <div class="admin-actions">
     <RouterLink to="/admin/edit" class="btn">+ NEW_POST.MD</RouterLink>
-    <span class="status-line">{{ posts.length }} file(s) found</span>
+    <span class="status-line">{{ total }} file(s) found</span>
   </div>
 
   <div class="admin-prompt" style="margin-top: 2rem;">

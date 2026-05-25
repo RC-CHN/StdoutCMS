@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
+import { logout } from '../api/auth'
 
 defineEmits<{
   'menu-click': []
@@ -19,7 +20,8 @@ function toggleTheme() {
   localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light')
 }
 
-function handleLogout() {
+async function handleLogout() {
+  try { await logout() } catch { /* ignore */ }
   clearToken()
   router.push('/')
 }

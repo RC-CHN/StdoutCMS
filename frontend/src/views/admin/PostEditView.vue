@@ -1,26 +1,36 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { getPostBySlug } from '../../mocks/posts'
+import { useRoute, useRouter } from 'vue-router'
+import { getPostAdmin, createPost, updatePost } from '../../api/posts'
+import type { PostPayload } from '../../api/posts'
 import { useDraft } from '../../composables/useDraft'
 import ArticleRenderer from '../../components/ArticleRenderer.vue'
 
 const route = useRoute()
+const router = useRouter()
 const slugParam = route.params.slug as string | undefined
 const isEdit = !!slugParam
 
 const { draft, lastSaved, save, clear, restoreFromPost } = useDraft()
 const status = ref('')
+const saving = ref(false)
 
-// 如果是编辑模式，加载已有文章
-onMounted(() => {
+// load existing post from API
+onMounted(async () => {
   if (isEdit && slugParam) {
-    const post = getPostBySlug(slugParam)
-    if (post) {
-      restoreFromPost(post)
+    status.value = `loading ${slugParam}.md...`
+    try {
+      const post = await getPostAdmin(slugParam)
+      restoreFromPost({
+        title: post.title,
+        slug: post.slug,
+        tags: post.tags || [],
+        excerpt: post.excerpt || '',
+        content: post.content,
+      })
       status.value = `loaded: ${post.slug}.md`
-    } else {
-      status.value = 'ERROR: file not found'
+    } catch (e: any) {
+      status.value = 'ERROR: ' + (e.message || 'not found')
     }
   }
 })
@@ -54,15 +64,62 @@ function generateSlug() {
   draft.value.slug = base || 'untitled'
 }
 
-function handlePublish() {
-  // TODO: 对接后端 API
-  status.value = 'PUBLISH: queued (backend not connected)'
-  console.log('publish payload:', draft.value)
+async function handlePublish() {
+  saving.value = true
+  const payload: PostPayload = {
+    slug: draft.value.slug,
+    title: draft.value.title,
+    content: draft.value.content,
+    excerpt: draft.value.excerpt,
+    tags: draft.value.tags.split(',').map(s => s.trim()).filter(Boolean),
+    author: 'root',
+    wordCount: draft.value.content.replace(/\s/g, '').length,
+    published: true,
+  }
+  try {
+    if (isEdit && slugParam) {
+      await updatePost(slugParam, payload)
+      status.value = `PUBLISHED: ${slugParam}.md updated`
+    } else {
+      await createPost(payload)
+      status.value = `PUBLISHED: ${draft.value.slug}.md created`
+      router.push(`/admin/edit/${draft.value.slug}`)
+    }
+    clear()
+  } catch (e: any) {
+    status.value = 'ERROR: ' + (e.message || 'publish failed')
+  } finally {
+    saving.value = false
+  }
 }
 
-function handleSave() {
-  save()
-  status.value = `SAVED: draft persisted to localStorage`
+async function handleSave() {
+  saving.value = true
+  const payload: PostPayload = {
+    slug: draft.value.slug,
+    title: draft.value.title,
+    content: draft.value.content,
+    excerpt: draft.value.excerpt,
+    tags: draft.value.tags.split(',').map(s => s.trim()).filter(Boolean),
+    author: 'root',
+    wordCount: draft.value.content.replace(/\s/g, '').length,
+    published: false,
+  }
+  try {
+    if (isEdit && slugParam) {
+      await updatePost(slugParam, payload)
+      status.value = `SAVED: ${slugParam}.md`
+    } else {
+      await createPost(payload)
+      status.value = `SAVED: ${draft.value.slug}.md`
+      router.push(`/admin/edit/${draft.value.slug}`)
+    }
+    clear()
+  } catch (e: any) {
+    status.value = 'ERROR: ' + (e.message || 'save failed')
+  } finally {
+    saving.value = false
+  }
 }
 
 function statusClass() {

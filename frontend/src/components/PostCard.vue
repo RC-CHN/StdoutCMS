@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import type { Post } from '../mocks/posts'
+import type { PostPayload } from '../api/posts'
 
 defineProps<{
-  post: Post
+  post: PostPayload
 }>()
 </script>
 
 <template>
   <article class="post-card">
     <div class="post-meta">
-      <span>DATE: {{ post.date }}</span>
-      <span>TAGS: [{{ post.tags.join(', ') }}]</span>
+      <span>DATE: {{ post.createdAt ? post.createdAt.slice(0, 10) : '—' }}</span>
+      <span>TAGS: [{{ (post.tags || []).join(', ') }}]</span>
     </div>
     <RouterLink :to="`/article/${post.slug}`" class="post-title">{{ post.title }}</RouterLink>
     <div class="post-excerpt">{{ post.excerpt }}</div>

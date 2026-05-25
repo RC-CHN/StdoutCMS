@@ -1,24 +1,36 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
-import { getPostBySlug, posts } from '../mocks/posts'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { getPost } from '../api/posts'
+import type { PostPayload } from '../api/posts'
 import ArticleRenderer from '../components/ArticleRenderer.vue'
 
 const route = useRoute()
 const slug = route.params.slug as string
-const post = computed(() => getPostBySlug(slug))
+const post = ref<PostPayload | null>(null)
+const loading = ref(false)
+const error = ref('')
 
-const currentIndex = computed(() => posts.findIndex((p) => p.slug === slug))
-const prevPost = computed(() => (currentIndex.value > 0 ? posts[currentIndex.value - 1] : null))
-const nextPost = computed(() => (currentIndex.value < posts.length - 1 ? posts[currentIndex.value + 1] : null))
+onMounted(async () => {
+  loading.value = true
+  try {
+    post.value = await getPost(slug)
+  } catch (e: any) {
+    error.value = e.message || 'article not found'
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
-  <template v-if="post">
+  <div v-if="loading" class="prompt-line muted">cat {{ slug }}.md...</div>
+  <div v-else-if="error" class="prompt-line" style="color: #ff4444;">ERROR: {{ error }}</div>
+  <template v-else-if="post">
     <article>
       <div class="article-header">
         <div class="article-meta">
-          [AUTHOR: {{ post.author }}] [DATE: {{ post.date }}] [WORDS: {{ post.wordCount }}]
+          [AUTHOR: {{ post.author }}] [DATE: {{ post.createdAt?.slice(0, 10) || '—' }}] [WORDS: {{ post.wordCount }}]
         </div>
         <h1 class="article-title">{{ post.title }}</h1>
       </div>
@@ -27,24 +39,12 @@ const nextPost = computed(() => (currentIndex.value < posts.length - 1 ? posts[c
 
       <div class="eof-marker">EOF</div>
     </article>
-
-    <nav class="post-nav">
-      <RouterLink v-if="prevPost" :to="`/article/${prevPost.slug}`" class="btn">
-        &lt;&lt; {{ prevPost.slug }}.md
-      </RouterLink>
-      <span v-else class="btn disabled">[ TOP_OF_DIR ]</span>
-
-      <RouterLink v-if="nextPost" :to="`/article/${nextPost.slug}`" class="btn">
-        {{ nextPost.slug }}.md &gt;&gt;
-      </RouterLink>
-      <span v-else class="btn disabled">[ END_OF_DIR ]</span>
-    </nav>
   </template>
   <template v-else>
     <div class="prompt-line">
       guest@k8s-node ~/articles $ <span style="color: var(--muted);">cat {{ slug }}.md</span>
     </div>
-    <p style="color: var(--muted); margin-top: 2rem;">ERROR: File not found. Use the listing above to see available files.</p>
+    <p style="color: var(--muted); margin-top: 2rem;">ERROR: File not found.</p>
   </template>
 </template>
 

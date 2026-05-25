@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
+import { login } from '../api/auth'
 
 const router = useRouter()
 const { setToken } = useAuth()
@@ -19,21 +20,15 @@ async function handleLogin() {
   }
 
   loading.value = true
-
-  // TODO: 对接后端 API
-  // const res = await fetch('/api/v1/admin/login', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ username: username.value, password: password.value }),
-  // })
-  // if (!res.ok) { error.value = 'ERROR: authentication failed'; loading.value = false; return }
-  // const data = await res.json()
-  // setToken(data.token)
-
-  // mock: 任意用户名密码都过
-  setToken('mock-session-token-' + Date.now())
-  loading.value = false
-  router.push('/admin')
+  try {
+    const data = await login(username.value, password.value)
+    setToken(data.token)
+    router.push('/admin')
+  } catch (e: any) {
+    error.value = 'ERROR: ' + (e.message || 'authentication failed')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
