@@ -103,10 +103,10 @@ async function handleSave() {
   </div>
 
   <div class="editor-actions">
-    <button class="btn" @click="handleSave" :disabled="saving">
+    <button class="btn btn-sm" @click="handleSave" :disabled="saving">
       {{ saving ? '[ SAVING... ]' : '[ SAVE ]' }}
     </button>
-    <RouterLink to="/admin/projects" class="btn">cd ..</RouterLink>
+    <RouterLink to="/admin/projects" class="btn btn-sm">cd ..</RouterLink>
   </div>
 </template>
 

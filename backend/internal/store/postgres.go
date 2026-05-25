@@ -68,6 +68,9 @@ func (p *Postgres) ListPosts(page, size int) ([]Post, int, error) {
 		}
 		posts = append(posts, po)
 	}
+	if posts == nil {
+		posts = make([]Post, 0)
+	}
 	return posts, total, rows.Err()
 }
 
@@ -132,6 +135,9 @@ func (p *Postgres) ListPostsAdmin(page, size int) ([]Post, int, error) {
 		}
 		posts = append(posts, po)
 	}
+	if posts == nil {
+		posts = make([]Post, 0)
+	}
 	return posts, total, rows.Err()
 }
 
@@ -181,6 +187,9 @@ func (p *Postgres) ListProjects() ([]Project, error) {
 			return nil, err
 		}
 		projects = append(projects, pr)
+	}
+	if projects == nil {
+		projects = make([]Project, 0)
 	}
 	return projects, rows.Err()
 }
