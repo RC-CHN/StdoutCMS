@@ -52,3 +52,53 @@ func (r *Redis) DeleteSession(token string) error {
 	ctx := context.Background()
 	return r.client.Del(ctx, "session:"+token).Err()
 }
+
+// ---- Cache ----
+
+func (r *Redis) GetCache(key string) ([]byte, bool) {
+	ctx := context.Background()
+	b, err := r.client.Get(ctx, key).Bytes()
+	if err != nil {
+		return nil, false
+	}
+	return b, true
+}
+
+func (r *Redis) SetCache(key string, data []byte, ttl time.Duration) {
+	ctx := context.Background()
+	r.client.Set(ctx, key, data, ttl)
+}
+
+func (r *Redis) DeleteCachePattern(pattern string) error {
+	ctx := context.Background()
+	var cursor uint64
+	for {
+		keys, next, err := r.client.Scan(ctx, cursor, pattern, 100).Result()
+		if err != nil {
+			return err
+		}
+		if len(keys) > 0 {
+			r.client.Del(ctx, keys...)
+		}
+		cursor = next
+		if cursor == 0 {
+			break
+		}
+	}
+	return nil
+}
+
+func (r *Redis) InvalidatePostList() {
+	r.DeleteCachePattern("posts:list:*")
+}
+
+func (r *Redis) InvalidatePost(slug string) {
+	ctx := context.Background()
+	r.client.Del(ctx, "posts:slug:"+slug)
+	r.InvalidatePostList()
+}
+
+func (r *Redis) InvalidateProjects() {
+	ctx := context.Background()
+	r.client.Del(ctx, "projects:list")
+}

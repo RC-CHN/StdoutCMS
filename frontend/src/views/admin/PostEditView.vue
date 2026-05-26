@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPostAdmin, createPost, updatePost } from '../../api/posts'
 import type { PostPayload } from '../../api/posts'
 import { useDraft } from '../../composables/useDraft'
+import { useImagePaste } from '../../composables/useImagePaste'
 import ArticleRenderer from '../../components/ArticleRenderer.vue'
 import AdminNav from '../../components/AdminNav.vue'
 
@@ -15,6 +16,13 @@ const isEdit = !!slugParam
 const { draft, lastSaved, save, clear, restoreFromPost } = useDraft()
 const status = ref('')
 const saving = ref(false)
+
+// image paste upload
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const { attach, detach } = useImagePaste(() => textareaRef.value)
+
+onMounted(() => attach())
+onUnmounted(() => detach())
 
 // load existing post from API
 onMounted(async () => {
@@ -189,6 +197,7 @@ function statusClass() {
       <textarea
         v-model="draft.content"
         class="editor-textarea"
+        ref="textareaRef"
         placeholder="# Title\n\nWrite your markdown here..."
         spellcheck="false"
       />

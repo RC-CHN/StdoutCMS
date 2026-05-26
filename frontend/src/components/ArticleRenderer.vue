@@ -109,4 +109,34 @@ const html = computed(() => parseMarkdown(props.content))
 .article-content :deep(strong) {
   color: var(--fg);
 }
+
+.article-content :deep(.md-image) {
+  display: block;
+  margin: 2rem auto;
+  max-width: 80%;
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow);
+  background: var(--bg);
+}
+
+.article-content :deep(.md-image-bar) {
+  border-bottom: 2px dashed var(--border);
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.article-content :deep(.md-image img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  filter: grayscale(1);
+  transition: filter 0.3s;
+}
+
+.article-content :deep(.md-image img:hover) {
+  filter: grayscale(0);
+}
 </style>

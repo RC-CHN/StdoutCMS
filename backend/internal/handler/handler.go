@@ -3,10 +3,12 @@ package handler
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -23,7 +25,7 @@ func Health(c *gin.Context) {
 
 // ---- Public ----
 
-func ListPosts(pg *store.Postgres) gin.HandlerFunc {
+func ListPosts(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 		size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
@@ -34,28 +36,46 @@ func ListPosts(pg *store.Postgres) gin.HandlerFunc {
 			size = 10
 		}
 
+		cacheKey := fmt.Sprintf("posts:list:%d:%d", page, size)
+		if cached, ok := rd.GetCache(cacheKey); ok {
+			c.Data(http.StatusOK, "application/json", cached)
+			return
+		}
+
 		posts, total, err := pg.ListPosts(page, size)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{
+		resp := gin.H{
 			"posts":    posts,
 			"total":    total,
 			"page":     page,
 			"pageSize": size,
-		})
+		}
+		body, _ := json.Marshal(resp)
+		rd.SetCache(cacheKey, body, 5*time.Minute)
+		c.JSON(http.StatusOK, resp)
 	}
 }
 
-func GetPost(pg *store.Postgres) gin.HandlerFunc {
+func GetPost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slug := c.Param("slug")
+
+		cacheKey := "posts:slug:" + slug
+		if cached, ok := rd.GetCache(cacheKey); ok {
+			c.Data(http.StatusOK, "application/json", cached)
+			return
+		}
+
 		post, err := pg.GetPostBySlug(slug)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
 			return
 		}
+		body, _ := json.Marshal(post)
+		rd.SetCache(cacheKey, body, 30*time.Minute)
 		c.JSON(http.StatusOK, post)
 	}
 }
@@ -72,14 +92,23 @@ func GetPostAdmin(pg *store.Postgres) gin.HandlerFunc {
 	}
 }
 
-func ListProjects(pg *store.Postgres) gin.HandlerFunc {
+func ListProjects(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		cacheKey := "projects:list"
+		if cached, ok := rd.GetCache(cacheKey); ok {
+			c.Data(http.StatusOK, "application/json", cached)
+			return
+		}
+
 		projects, err := pg.ListProjects()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"projects": projects})
+		resp := gin.H{"projects": projects}
+		body, _ := json.Marshal(resp)
+		rd.SetCache(cacheKey, body, 10*time.Minute)
+		c.JSON(http.StatusOK, resp)
 	}
 }
 
@@ -170,7 +199,7 @@ func ListPostsAdmin(pg *store.Postgres) gin.HandlerFunc {
 	}
 }
 
-func CreatePost(pg *store.Postgres) gin.HandlerFunc {
+func CreatePost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var po store.Post
 		if err := c.ShouldBindJSON(&po); err != nil {
@@ -185,11 +214,12 @@ func CreatePost(pg *store.Postgres) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		rd.InvalidatePost(po.Slug)
 		c.JSON(http.StatusCreated, gin.H{"slug": po.Slug})
 	}
 }
 
-func UpdatePost(pg *store.Postgres) gin.HandlerFunc {
+func UpdatePost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slug := c.Param("slug")
 		var po store.Post
@@ -201,17 +231,19 @@ func UpdatePost(pg *store.Postgres) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		rd.InvalidatePost(slug)
 		c.JSON(http.StatusOK, gin.H{"slug": slug, "status": "updated"})
 	}
 }
 
-func DeletePost(pg *store.Postgres) gin.HandlerFunc {
+func DeletePost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slug := c.Param("slug")
 		if err := pg.DeletePost(slug); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		rd.InvalidatePost(slug)
 		c.JSON(http.StatusOK, gin.H{"slug": slug, "status": "deleted"})
 	}
 }
@@ -229,7 +261,7 @@ func ListProjectsAdmin(pg *store.Postgres) gin.HandlerFunc {
 	}
 }
 
-func CreateProject(pg *store.Postgres) gin.HandlerFunc {
+func CreateProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var pr store.Project
 		if err := c.ShouldBindJSON(&pr); err != nil {
@@ -240,11 +272,12 @@ func CreateProject(pg *store.Postgres) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		rd.InvalidateProjects()
 		c.JSON(http.StatusCreated, gin.H{"status": "created"})
 	}
 }
 
-func UpdateProject(pg *store.Postgres) gin.HandlerFunc {
+func UpdateProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
@@ -260,11 +293,12 @@ func UpdateProject(pg *store.Postgres) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		rd.InvalidateProjects()
 		c.JSON(http.StatusOK, gin.H{"status": "updated"})
 	}
 }
 
-func DeleteProject(pg *store.Postgres) gin.HandlerFunc {
+func DeleteProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
@@ -275,6 +309,7 @@ func DeleteProject(pg *store.Postgres) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		rd.InvalidateProjects()
 		c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 	}
 }

@@ -92,9 +92,9 @@ func main() {
 	r.GET("/health", handler.Health)
 
 	// public
-	r.GET("/api/v1/posts", handler.ListPosts(pg))
-	r.GET("/api/v1/posts/:slug", handler.GetPost(pg))
-	r.GET("/api/v1/projects", handler.ListProjects(pg))
+	r.GET("/api/v1/posts", handler.ListPosts(pg, rd))
+	r.GET("/api/v1/posts/:slug", handler.GetPost(pg, rd))
+	r.GET("/api/v1/projects", handler.ListProjects(pg, rd))
 	r.GET("/api/v1/projects/:id", handler.GetProject(pg))
 
 	// admin
@@ -105,14 +105,14 @@ func main() {
 		admin.DELETE("/logout", handler.Logout(rd, cfg))
 		admin.GET("/posts", handler.ListPostsAdmin(pg))
 		admin.GET("/posts/:slug", handler.GetPostAdmin(pg))
-		admin.POST("/posts", handler.CreatePost(pg))
-		admin.PUT("/posts/:slug", handler.UpdatePost(pg))
-		admin.DELETE("/posts/:slug", handler.DeletePost(pg))
+		admin.POST("/posts", handler.CreatePost(pg, rd))
+		admin.PUT("/posts/:slug", handler.UpdatePost(pg, rd))
+		admin.DELETE("/posts/:slug", handler.DeletePost(pg, rd))
 		admin.POST("/upload", handler.UploadImage(s3, cfg))
 		admin.GET("/projects", handler.ListProjectsAdmin(pg))
-		admin.POST("/projects", handler.CreateProject(pg))
-		admin.PUT("/projects/:id", handler.UpdateProject(pg))
-		admin.DELETE("/projects/:id", handler.DeleteProject(pg))
+		admin.POST("/projects", handler.CreateProject(pg, rd))
+		admin.PUT("/projects/:id", handler.UpdateProject(pg, rd))
+		admin.DELETE("/projects/:id", handler.DeleteProject(pg, rd))
 	}
 
 	logger.Info("server starting", "port", cfg.AppPort)

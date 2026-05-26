@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { getPostAdmin, createPost, updatePost } from '../../api/posts'
 import type { PostPayload } from '../../api/posts'
 import AdminNav from '../../components/AdminNav.vue'
 import ArticleRenderer from '../../components/ArticleRenderer.vue'
+import { useImagePaste } from '../../composables/useImagePaste'
 
 const SLUG = 'about'
 const post = ref<PostPayload>({ slug: SLUG, title: '', content: '', published: true })
 const isNew = ref(true)
 const status = ref('')
 const saving = ref(false)
+
+// image paste upload
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const { attach, detach } = useImagePaste(() => textareaRef.value)
+
+onMounted(() => attach())
+onUnmounted(() => detach())
 
 onMounted(async () => {
   try {
@@ -66,6 +74,7 @@ async function handleSave() {
       <textarea
         v-model="post.content"
         class="editor-textarea"
+          ref="textareaRef"
         placeholder="Write your about page in markdown..."
         spellcheck="false"
       />

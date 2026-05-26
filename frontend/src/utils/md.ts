@@ -3,6 +3,7 @@ function inline(html: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<figure class="md-image"><div class="md-image-bar">> $1</div><img src="$2" alt="$1"></figure>')
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
 }
 
