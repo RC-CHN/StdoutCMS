@@ -17,10 +17,11 @@ type Config struct {
 }
 
 type LLMConfig struct {
-	Endpoint   string
-	APIKey     string
-	Model      string
-	DailyLimit int
+	Endpoint     string
+	APIKey       string
+	Model        string
+	DailyLimit   int
+	SystemPrompt string // empty → use built-in default
 }
 
 // IsEnabled returns true when all required LLM fields are configured.
@@ -60,10 +61,11 @@ func Load() *Config {
 			UseSSL:     getEnvBool("STORAGE_USE_SSL", false),
 		},
 		LLM: LLMConfig{
-			Endpoint:   getEnv("LLM_ENDPOINT", ""),
-			APIKey:     getEnv("LLM_API_KEY", ""),
-			Model:      getEnv("LLM_MODEL", ""),
-			DailyLimit: getEnvInt("LLM_DAILY_LIMIT", 50),
+			Endpoint:     getEnv("LLM_ENDPOINT", ""),
+			APIKey:       getEnv("LLM_API_KEY", ""),
+			Model:        getEnv("LLM_MODEL", ""),
+			DailyLimit:   getEnvInt("LLM_DAILY_LIMIT", 50),
+			SystemPrompt: getEnv("LLM_SYSTEM_PROMPT", ""),
 		},
 	}
 }

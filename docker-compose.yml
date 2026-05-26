@@ -86,6 +86,7 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_DAILY_LIMIT: ${LLM_DAILY_LIMIT:-50}
+      LLM_SYSTEM_PROMPT: ${LLM_SYSTEM_PROMPT:-}
 
   frontend:
     build: ./frontend

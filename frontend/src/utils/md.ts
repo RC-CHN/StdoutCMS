@@ -1,10 +1,32 @@
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+// escapeAttr escapes for HTML attribute context (img alt, link titles, etc.)
+function escapeAttr(s: string): string {
+  return escapeHtml(s).replace(/'/g, '&#39;')
+}
+
+// inline transforms inline markdown in pre-escaped text.
+// Text is escaped BEFORE markdown rules are applied, so
+// **bold** → &lt;strong&gt;bold&lt;/strong&gt; → <strong>bold</strong>
 function inline(html: string): string {
-  return html
+  // escape first, then apply markdown on the escaped text
+  const safe = escapeHtml(html)
+  return safe
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<figure class="md-image"><div class="md-image-bar">> $1</div><img src="$2" alt="$1"></figure>')
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt: string, src: string) =>
+      `<figure class="md-image"><div class="md-image-bar">&gt; ${escapeHtml(alt)}</div><img src="${escapeAttr(src)}" alt="${escapeAttr(alt)}"></figure>`
+    )
+    .replace(/\[(.+?)\]\((.+?)\)/g, (_, text: string, href: string) =>
+      `<a href="${escapeAttr(href)}">${text}</a>`
+    )
 }
 
 export function parseMarkdown(src: string): string {
@@ -15,13 +37,13 @@ export function parseMarkdown(src: string): string {
   while (i < lines.length) {
     const line = lines[i]
 
-    // 空行
+    // empty line
     if (!line.trim()) {
       i++
       continue
     }
 
-    // 代码块
+    // fenced code block — content is escaped, not markdown-processed
     if (line.trim().startsWith('```')) {
       const lang = line.trim().slice(3).trim() || 'code'
       const codeLines: string[] = []
@@ -30,7 +52,7 @@ export function parseMarkdown(src: string): string {
         codeLines.push(lines[i])
         i++
       }
-      i++ // skip ```
+      i++ // skip closing ```
       out.push(`<pre><div class="code-lang">${escapeHtml(lang)}</div><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`)
       continue
     }
@@ -83,11 +105,4 @@ export function parseMarkdown(src: string): string {
   }
 
   return out.join('\n')
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
 }

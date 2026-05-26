@@ -1,12 +1,5 @@
 const BASE_URL = '/api/v1'
 
-function getToken(): string {
-  // 优先 cookie，fallback localStorage
-  const match = document.cookie.match(/(?:^| )blog_session_token=([^;]+)/)
-  if (match) return match[1]
-  return localStorage.getItem('blog_session_token') || ''
-}
-
 async function request<T>(
   method: string,
   path: string,
@@ -16,20 +9,16 @@ async function request<T>(
   if (body && !(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json'
   }
-  const token = getToken()
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
 
   const res = await fetch(BASE_URL + path, {
     method,
     headers,
+    credentials: 'include', // send HttpOnly cookie set by backend
     body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
   })
 
   if (res.status === 401) {
-    document.cookie = 'blog_session_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
-    localStorage.removeItem('blog_session_token')
+    sessionStorage.removeItem('blog_logged_in')
     window.location.href = '/login'
     throw new Error('session expired')
   }
