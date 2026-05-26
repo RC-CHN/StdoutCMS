@@ -28,6 +28,22 @@ func NewPostgres(dsn string) (*Postgres, error) {
 	return &Postgres{pool: pool}, nil
 }
 
+// ---- Stats ----
+
+func (p *Postgres) CountPosts() (int, error) {
+	ctx := context.Background()
+	var n int
+	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts WHERE published = true").Scan(&n)
+	return n, err
+}
+
+func (p *Postgres) CountProjects() (int, error) {
+	ctx := context.Background()
+	var n int
+	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM projects").Scan(&n)
+	return n, err
+}
+
 func (p *Postgres) Close() {
 	if p.pool != nil {
 		p.pool.Close()

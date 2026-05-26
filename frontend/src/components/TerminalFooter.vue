@@ -1,25 +1,38 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { fetchMeta } from '../api/meta'
+import type { MetaResponse } from '../api/meta'
 
 const route = useRoute()
+const meta = ref<MetaResponse | null>(null)
+
+onMounted(async () => {
+  try { meta.value = await fetchMeta() } catch { /* ignore */ }
+})
 
 const marqueeText = computed(() => {
+  const m = meta.value
   if (route.name === 'article') {
-    return '*** READING_MODE ENGAGED *** CONNECTION SECURE *** NO TRACKERS BLOCKED (BECAUSE THERE ARE NONE) *** ENJOY THE PLAIN TEXT ***'
+    return '*** READING_MODE *** 0 TRACKERS *** 0 ANALYTICS *** PLAIN TEXT ONLY *** ENJOY ***'
   }
   if (route.name === 'about') {
-    return '*** ABOUT_MODE *** NO SECRETS HERE *** JUST A HUMAN BEING ***'
+    return '*** ABOUT *** A HUMAN BEING *** POWERED BY CURIOSITY AND COFFEE ***'
   }
   if (route.name === 'projects') {
-    return '*** PROJECT_MODE *** COMPILING IDEAS *** SHIPPING CODE ***'
+    return '*** PROJECTS *** COMPILED FROM IDEAS *** SHIPPED WITH LOVE ***'
   }
-  return '*** SYSTEM OPTIMAL *** CLUSTER NODES: 3/3 READY *** UPTIME: 99.99% *** NO STATEFUL SETS DETECTED *** ALL SYSTEMS GO ***'
+  const parts = ['*** SYS_BLOG.EXE ***']
+  if (m) parts.push(`POSTS: ${m.posts}`)
+  if (m) parts.push(`PROJECTS: ${m.projects}`)
+  if (m) parts.push(`UPTIME: ${m.uptime}`)
+  parts.push('STATELESS *** ALL GREEN ***')
+  return parts.join(' *** ')
 })
 
 const footerRight = computed(() => {
-  if (route.name === 'article') return 'READ_TIME: 3m 12s'
-  return 'RENDER_TIME: 12ms'
+  if (meta.value) return `UPTIME: ${meta.value.uptime}`
+  return 'LOADING...'
 })
 </script>
 
@@ -30,7 +43,7 @@ const footerRight = computed(() => {
 
   <div class="container" style="padding-top: 0; padding-bottom: 2rem;">
     <footer>
-      <span>(c) 202X YOUR_NAME.</span>
+      <span>(c) 2026 Ruochen_Pan.</span>
       <span>{{ footerRight }}</span>
     </footer>
   </div>

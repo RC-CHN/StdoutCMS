@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -19,8 +20,39 @@ import (
 	"stdoutcms/internal/store"
 )
 
+// Version is set at build time via ldflags.
+var Version = "dev"
+
 func Health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+// ---- Meta ----
+
+type MetaResponse struct {
+	App       string `json:"app"`
+	Version   string `json:"version"`
+	Uptime    string `json:"uptime"`
+	Posts     int    `json:"posts"`
+	Projects  int    `json:"projects"`
+	GoVersion string `json:"goVersion"`
+}
+
+var startTime = time.Now()
+
+func Meta(pg *store.Postgres) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		posts, _ := pg.CountPosts()
+		projects, _ := pg.CountProjects()
+		c.JSON(http.StatusOK, MetaResponse{
+			App:       "SYS_BLOG.EXE",
+			Version:   Version,
+			Uptime:    time.Since(startTime).Truncate(time.Second).String(),
+			Posts:     posts,
+			Projects:  projects,
+			GoVersion: runtime.Version(),
+		})
+	}
 }
 
 // ---- Public ----

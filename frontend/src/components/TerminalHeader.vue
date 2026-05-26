@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import { logout } from '../api/auth'
@@ -46,11 +46,14 @@ function typeWriter() {
   }
 }
 
-onMounted(() => {
+function startTypeWriter() {
   displayed.value = ''
   i = 0
   setTimeout(typeWriter, 300)
-})
+}
+
+onMounted(startTypeWriter)
+watch(() => route.fullPath, startTypeWriter)
 </script>
 
 <template>

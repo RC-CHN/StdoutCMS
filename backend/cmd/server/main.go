@@ -90,6 +90,7 @@ func main() {
 
 	// health
 	r.GET("/health", handler.Health)
+	r.GET("/api/v1/meta", handler.Meta(pg))
 
 	// public
 	r.GET("/api/v1/posts", handler.ListPosts(pg, rd))
