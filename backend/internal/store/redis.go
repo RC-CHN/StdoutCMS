@@ -102,3 +102,57 @@ func (r *Redis) InvalidateProjects() {
 	ctx := context.Background()
 	r.client.Del(ctx, "projects:list")
 }
+
+// ---- Chat ----
+
+const chatHistoryLimit = 20 // max rounds per session
+
+// ChatGetHistory returns chat messages from oldest to newest.
+// Each element is a JSON blob: {"role":"user","content":"..."}
+func (r *Redis) ChatGetHistory(sid string) ([]string, error) {
+	ctx := context.Background()
+	key := "chat:session:" + sid
+	// LRANGE returns newest-first, we want oldest-first
+	items, err := r.client.LRange(ctx, key, 0, -1).Result()
+	if err != nil {
+		return nil, err
+	}
+	// reverse to chronological order (oldest first)
+	n := len(items)
+	result := make([]string, n)
+	for i, v := range items {
+		result[n-1-i] = v
+	}
+	return result, nil
+}
+
+// ChatPushMessage pushes a JSON-encoded message onto the session list,
+// trims to chatHistoryLimit rounds (×2 messages), and refreshes TTL.
+func (r *Redis) ChatPushMessage(sid string, msg string, ttl time.Duration) error {
+	ctx := context.Background()
+	key := "chat:session:" + sid
+	pipe := r.client.Pipeline()
+	pipe.LPush(ctx, key, msg)
+	pipe.LTrim(ctx, key, 0, chatHistoryLimit*2-1) // 2 messages per round
+	pipe.Expire(ctx, key, ttl)
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+// ChatDailyQuota increments today's global counter and returns (current, limit).
+// If the counter was just created, sets its TTL to the end of the day.
+func (r *Redis) ChatDailyQuota(limit int) (int64, bool) {
+	ctx := context.Background()
+	key := "chat:quota:daily"
+	n, err := r.client.Incr(ctx, key).Result()
+	if err != nil {
+		return 0, false // Redis down? deny
+	}
+	if n == 1 {
+		// first request today, set TTL to midnight
+		now := time.Now()
+		midnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+		r.client.ExpireAt(ctx, key, midnight)
+	}
+	return n, n <= int64(limit)
+}

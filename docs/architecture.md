@@ -112,6 +112,53 @@ POST   /api/v1/admin/upload        上传图片 → S3/MinIO
 DELETE /api/v1/admin/images/:id    删除图片
 ```
 
+### AI 聊天接口
+
+AI 功能**默认关闭**。未配置 LLM 环境变量时，后端不注册聊天路由，前端不显示聊天入口。
+
+#### 启用方式
+
+```bash
+LLM_ENDPOINT=https://api.openai.com/v1   # 必填
+LLM_API_KEY=sk-your-key-here             # 必填
+LLM_MODEL=gpt-4o                         # 必填
+LLM_DAILY_LIMIT=50                       # 可选，默认 50
+```
+
+前端通过 `GET /api/v1/meta` 返回的 `{ "ai": true/false }` 判断是否显示相关 UI。
+
+| 端点 | 鉴权 | 限流 |
+|------|------|------|
+| `POST /api/v1/ai/chat` | 无需 | 50次/天全局限流 |
+| `POST /api/v1/admin/ai/chat` | session | 不限 |
+
+#### 请求 / 响应
+
+```
+POST /api/v1/ai/chat
+  { "q": "用户输入", "ctx": "文章slug", "sid": "chat_abc123" }
+  → { "a": "AI 回复内容", "sid": "chat_abc123" }
+```
+
+- `q` — 必填，≤500 字符
+- `ctx` — 可选文章 slug，后端据此查全文注入 system prompt
+- `sid` — 可选，续写已有会话；不传则新建
+
+#### 设计要点
+
+- **非标字段** — `q`/`a`/`sid` 而非 `messages`/`choices`，无法被通用 OpenAI 客户端直连反代
+- **有状态会话** — 历史消息存 Redis `chat:session:{sid}`，最大 20 轮，每次对话刷新 TTL 1 小时滑动过期
+- **ctx 间接引用** — 前端只传文章 slug，后端自己查全文，攻击者无法灌入任意 system prompt
+- **限流** — 公开接口用 Redis `chat:quota:daily` 计数器，每天全局 50 次；admin 接口不限制
+- **后端内部翻译** — 将 `q` + 历史 + ctx 组装成 OpenAI 标准 messages 发给 LLM，前端永远看不到原生格式
+
+#### Redis Key
+
+| Key | 类型 | TTL |
+|-----|------|-----|
+| `chat:session:{sid}` | list (JSON) | 1h 滑动过期 |
+| `chat:quota:daily` | string (int) | 当天 23:59 |
+
 ---
 
 ## 图片上传设计

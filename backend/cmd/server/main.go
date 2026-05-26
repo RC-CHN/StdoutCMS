@@ -90,13 +90,18 @@ func main() {
 
 	// health
 	r.GET("/health", handler.Health)
-	r.GET("/api/v1/meta", handler.Meta(pg))
+	r.GET("/api/v1/meta", handler.Meta(pg, cfg.LLM.IsEnabled()))
 
 	// public
 	r.GET("/api/v1/posts", handler.ListPosts(pg, rd))
 	r.GET("/api/v1/posts/:slug", handler.GetPost(pg, rd))
 	r.GET("/api/v1/projects", handler.ListProjects(pg, rd))
 	r.GET("/api/v1/projects/:id", handler.GetProject(pg))
+
+	// AI chat (public) — only if LLM is configured
+	if cfg.LLM.IsEnabled() {
+		r.POST("/api/v1/ai/chat", handler.Chat(pg, rd, cfg))
+	}
 
 	// admin
 	admin := r.Group("/api/v1/admin")
@@ -114,6 +119,11 @@ func main() {
 		admin.POST("/projects", handler.CreateProject(pg, rd))
 		admin.PUT("/projects/:id", handler.UpdateProject(pg, rd))
 		admin.DELETE("/projects/:id", handler.DeleteProject(pg, rd))
+
+		// AI chat (admin) — only if LLM is configured
+		if cfg.LLM.IsEnabled() {
+			admin.POST("/ai/chat", handler.AdminChat(pg, rd, cfg))
+		}
 	}
 
 	logger.Info("server starting", "port", cfg.AppPort)

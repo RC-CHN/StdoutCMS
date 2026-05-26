@@ -36,11 +36,12 @@ type MetaResponse struct {
 	Posts     int    `json:"posts"`
 	Projects  int    `json:"projects"`
 	GoVersion string `json:"goVersion"`
+	AI        bool   `json:"ai"` // LLM features enabled
 }
 
 var startTime = time.Now()
 
-func Meta(pg *store.Postgres) gin.HandlerFunc {
+func Meta(pg *store.Postgres, llmEnabled bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		posts, _ := pg.CountPosts()
 		projects, _ := pg.CountProjects()
@@ -51,6 +52,7 @@ func Meta(pg *store.Postgres) gin.HandlerFunc {
 			Posts:     posts,
 			Projects:  projects,
 			GoVersion: runtime.Version(),
+			AI:        llmEnabled,
 		})
 	}
 }

@@ -81,6 +81,11 @@ services:
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       STORAGE_CDN_BASE_URL: /img
       STORAGE_USE_SSL: "false"
+      # LLM (leave empty to disable AI features entirely)
+      LLM_ENDPOINT: ${LLM_ENDPOINT:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_DAILY_LIMIT: "${LLM_DAILY_LIMIT:-50}"
 
   frontend:
     build: ./frontend

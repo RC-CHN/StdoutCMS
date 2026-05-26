@@ -13,6 +13,21 @@ type Config struct {
 	SessionSecret   string
 	SessionMaxAge   int // seconds
 	Storage         StorageConfig
+	LLM             LLMConfig
+}
+
+type LLMConfig struct {
+	Endpoint   string
+	APIKey     string
+	Model      string
+	DailyLimit int
+}
+
+// IsEnabled returns true when all required LLM fields are configured.
+// If the user doesn't set LLM_ENDPOINT / LLM_API_KEY / LLM_MODEL,
+// AI features are silently disabled across both backend and frontend.
+func (c LLMConfig) IsEnabled() bool {
+	return c.Endpoint != "" && c.APIKey != "" && c.Model != ""
 }
 
 type StorageConfig struct {
@@ -43,6 +58,12 @@ func Load() *Config {
 			SecretKey:  mustEnv("STORAGE_SECRET_KEY"),
 			CDNBaseURL: getEnv("STORAGE_CDN_BASE_URL", "http://localhost:9000/blog-assets"),
 			UseSSL:     getEnvBool("STORAGE_USE_SSL", false),
+		},
+		LLM: LLMConfig{
+			Endpoint:   getEnv("LLM_ENDPOINT", ""),
+			APIKey:     getEnv("LLM_API_KEY", ""),
+			Model:      getEnv("LLM_MODEL", ""),
+			DailyLimit: getEnvInt("LLM_DAILY_LIMIT", 50),
 		},
 	}
 }
