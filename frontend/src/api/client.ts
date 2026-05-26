@@ -27,6 +27,13 @@ async function request<T>(
     body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
   })
 
+  if (res.status === 401) {
+    document.cookie = 'blog_session_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
+    localStorage.removeItem('blog_session_token')
+    window.location.href = '/login'
+    throw new Error('session expired')
+  }
+
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
     throw new Error(data.error || res.statusText)
