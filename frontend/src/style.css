@@ -31,6 +31,48 @@ body.dark-mode {
   padding: 0;
 }
 
+/* ===== Win95 Original Cursors ===== */
+html {
+  cursor: url('/win-95-98/arrow.cur'), default;
+}
+
+a,
+button,
+.btn,
+select,
+label[for],
+[role='button'],
+summary {
+  cursor: url('/win-95-98/hand.cur'), pointer;
+}
+
+input[type='text'],
+input[type='password'],
+input[type='email'],
+input[type='search'],
+input[type='url'],
+input[type='number'],
+textarea,
+[contenteditable='true'] {
+  cursor: url('/win-95-98/Beam.cur'), text;
+}
+
+[disabled],
+.disabled {
+  cursor: url('/win-95-98/ilegal.cur'), not-allowed;
+}
+
+.waiting,
+.loading {
+  cursor: url('/win-95-98/arrow-disk.cur'), wait;
+}
+
+/* draggable elements */
+.dragging,
+[data-drag] {
+  cursor: url('/win-95-98/relocate.cur'), move;
+}
+
 ::selection {
   background: var(--selection-bg);
   color: var(--selection-fg);
@@ -69,8 +111,7 @@ button, .btn {
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: bold;
-  cursor: pointer;
-  box-shadow: 3px 3px 0px var(--border);
+  cursor: url('/win-95-98/hand.cur'), pointer;
   transition: all 0.1s;
   text-transform: uppercase;
   text-decoration: none;

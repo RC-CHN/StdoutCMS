@@ -97,7 +97,7 @@ watch(() => route.fullPath, startTypeWriter)
   text-transform: uppercase;
   letter-spacing: -1px;
   font-weight: bold;
-  cursor: pointer;
+  cursor: url('/win-95-98/hand.cur'), pointer;
 }
 
 .status-line {

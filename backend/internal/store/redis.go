@@ -156,3 +156,15 @@ func (r *Redis) ChatDailyQuota(limit int) (int64, bool) {
 	}
 	return n, n <= int64(limit)
 }
+
+// ChatGetLastCtx returns the article slug last injected for this session.
+func (r *Redis) ChatGetLastCtx(sid string) (string, error) {
+	ctx := context.Background()
+	return r.client.Get(ctx, "chat:session:"+sid+":ctx").Result()
+}
+
+// ChatSetLastCtx records the current article slug for this session with the same TTL as the session.
+func (r *Redis) ChatSetLastCtx(sid string, slug string, ttl time.Duration) error {
+	ctx := context.Background()
+	return r.client.Set(ctx, "chat:session:"+sid+":ctx", slug, ttl).Err()
+}

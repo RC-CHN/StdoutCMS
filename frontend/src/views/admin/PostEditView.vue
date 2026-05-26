@@ -326,7 +326,7 @@ function statusClass() {
   font-family: inherit;
   font-size: 0.8rem;
   font-weight: bold;
-  cursor: pointer;
+  cursor: url('/win-95-98/hand.cur'), pointer;
   text-transform: uppercase;
   transition: all 0.1s;
 }

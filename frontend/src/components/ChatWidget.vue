@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useChat } from '../composables/useChat'
 import { parseMarkdown } from '../utils/md'
@@ -16,13 +16,6 @@ const ctx = computed(() => {
   if (route.name === 'article') return route.params.slug as string
   return undefined
 })
-
-function toggle() {
-  isOpen.value = !isOpen.value
-  if (isOpen.value) {
-    nextTick(() => inputRef.value?.focus())
-  }
-}
 
 function handleSend() {
   if (!canSend.value) return
@@ -44,23 +37,112 @@ watch([messages, loading], () => {
     scrollRef.value?.scrollTo({ top: scrollRef.value.scrollHeight, behavior: 'smooth' })
   })
 }, { deep: true })
+
+// ---- 拖动 ----
+const pos = ref({ x: 0, y: 0 })
+const isDragging = ref(false)
+const dragOffset = ref({ x: 0, y: 0 })
+const dragged = ref(false)
+
+function clampPos(x: number, y: number) {
+  const w = isOpen.value ? 420 : 48
+  const h = isOpen.value ? 540 : 48
+  pos.value.x = Math.max(0, Math.min(window.innerWidth - w, x))
+  pos.value.y = Math.max(0, Math.min(window.innerHeight - h, y))
+}
+
+function initPos() {
+  const w = isOpen.value ? 420 : 48
+  const h = isOpen.value ? 540 : 48
+  clampPos(window.innerWidth - w - 24, window.innerHeight - h - 24)
+}
+
+function onDragStart(e: MouseEvent) {
+  isDragging.value = true
+  dragged.value = false
+  dragOffset.value.x = e.clientX - pos.value.x
+  dragOffset.value.y = e.clientY - pos.value.y
+}
+
+function onWindowMouseMove(e: MouseEvent) {
+  if (!isDragging.value) return
+  const nx = e.clientX - dragOffset.value.x
+  const ny = e.clientY - dragOffset.value.y
+  if (Math.abs(nx - pos.value.x) > 3 || Math.abs(ny - pos.value.y) > 3) {
+    dragged.value = true
+  }
+  clampPos(nx, ny)
+}
+
+function onWindowMouseUp() {
+  isDragging.value = false
+}
+
+function onWindowResize() {
+  clampPos(pos.value.x, pos.value.y)
+}
+
+function onTriggerClick() {
+  if (dragged.value) return
+  toggle()
+}
+function onTriggerMouseDown(e: MouseEvent) { onDragStart(e) }
+function onHeaderMouseDown(e: MouseEvent) {
+  if ((e.target as HTMLElement).closest('.chat-action')) return
+  onDragStart(e)
+}
+
+// 切换展开/收起时重新确保位置不越界
+function toggle() {
+  isOpen.value = !isOpen.value
+  nextTick(() => {
+    clampPos(pos.value.x, pos.value.y)
+    if (isOpen.value) {
+      inputRef.value?.focus()
+    }
+  })
+}
+
+onMounted(() => {
+  initPos()
+  window.addEventListener('mousemove', onWindowMouseMove)
+  window.addEventListener('mouseup', onWindowMouseUp)
+  window.addEventListener('resize', onWindowResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('mousemove', onWindowMouseMove)
+  window.removeEventListener('mouseup', onWindowMouseUp)
+  window.removeEventListener('resize', onWindowResize)
+})
 </script>
 
 <template>
-  <!-- 收起状态按钮 -->
+  <!-- 收起状态按钮（可拖动） -->
   <button
     v-if="!isOpen"
     class="chat-trigger"
-    @click="toggle"
+    :class="{ dragging: isDragging }"
+    :style="{ left: pos.x + 'px', top: pos.y + 'px' }"
+    @mousedown="onTriggerMouseDown"
+    @click="onTriggerClick"
     title="AI Assistant"
   >
     [&gt;_]
   </button>
 
   <!-- 聊天窗口 -->
-  <div v-else class="chat-window">
-    <!-- 标题栏 -->
-    <div class="chat-header">
+  <div
+    v-else
+    class="chat-window"
+    :style="{ left: pos.x + 'px', top: pos.y + 'px' }"
+  >
+    <!-- 标题栏 — 可拖动 -->
+    <div
+      class="chat-header"
+      :class="{ dragging: isDragging }"
+      @mousedown="onHeaderMouseDown"
+    >
       <span>[ AI_ASSISTANT ]</span>
       <div class="chat-header-actions">
         <button class="chat-action" @click="clear" title="clear session">[CLR]</button>
@@ -112,7 +194,7 @@ watch([messages, loading], () => {
         @keydown="handleKeydown"
       />
       <button
-        class="chat-send"
+        class="chat-send btn"
         :disabled="!canSend"
         @click="handleSend"
       >
@@ -126,8 +208,6 @@ watch([messages, loading], () => {
 /* ---- 触发按钮 ---- */
 .chat-trigger {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
   width: 48px;
   height: 48px;
   border: 2px solid var(--border);
@@ -137,24 +217,24 @@ watch([messages, loading], () => {
   font-size: 0.9rem;
   font-weight: bold;
   color: var(--fg);
-  cursor: pointer;
+  cursor: url('/win-95-98/relocate.cur'), move;
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
 }
 .chat-trigger:hover {
   background: var(--fg);
   color: var(--bg);
-  transform: translate(-2px, -2px);
+}
+.chat-trigger.dragging {
+  background: var(--fg);
+  color: var(--bg);
 }
 
 /* ---- 聊天窗口 ---- */
 .chat-window {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
   width: 420px;
   max-width: calc(100vw - 48px);
   height: 540px;
@@ -179,6 +259,11 @@ watch([messages, loading], () => {
   font-weight: bold;
   font-size: 0.8rem;
   flex-shrink: 0;
+  cursor: url('/win-95-98/relocate.cur'), move;
+  user-select: none;
+}
+.chat-header.dragging {
+  opacity: 0.9;
 }
 .chat-header-actions {
   display: flex;
@@ -190,7 +275,7 @@ watch([messages, loading], () => {
   color: var(--bg);
   font-family: var(--font-main);
   font-size: 0.75rem;
-  cursor: pointer;
+  cursor: url('/win-95-98/hand.cur'), pointer;
   padding: 0;
 }
 .chat-action:hover {
@@ -274,7 +359,7 @@ watch([messages, loading], () => {
 /* ---- 输入区 ---- */
 .chat-input-area {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
   padding: 10px 12px;
   border-top: 2px solid var(--border);
@@ -285,8 +370,8 @@ watch([messages, loading], () => {
   color: var(--muted);
   font-size: 0.8rem;
   white-space: nowrap;
-  padding-bottom: 4px;
   user-select: none;
+  line-height: 1.5;
 }
 .chat-input {
   flex: 1;
@@ -301,25 +386,38 @@ watch([messages, loading], () => {
   max-height: 120px;
   field-sizing: content;
   line-height: 1.5;
+  padding: 0;
+  margin: 0;
 }
 .chat-input::placeholder {
   color: var(--muted);
   opacity: 0.5;
 }
+
+/* ---- 发送按钮 ---- */
 .chat-send {
-  background: none;
-  border: none;
-  color: var(--fg);
   font-family: var(--font-main);
   font-size: 0.75rem;
-  cursor: pointer;
-  padding: 4px 0;
+  padding: 4px 10px;
   white-space: nowrap;
-  opacity: 1;
+  cursor: url('/win-95-98/hand.cur'), pointer;
+  background: var(--bg);
+  color: var(--fg);
+  border: 2px solid var(--border);
+  box-shadow: 2px 2px 0px var(--border);
+  transition: all 0.1s;
+}
+.chat-send:hover:not(:disabled) {
+  background: var(--fg);
+  color: var(--bg);
+  box-shadow: 3px 3px 0px var(--border);
+  transform: translate(-1px, -1px);
 }
 .chat-send:disabled {
-  opacity: 0.3;
+  opacity: 0.35;
   cursor: default;
+  box-shadow: none;
+  transform: none;
 }
 
 /* ---- 打字机光标 ---- */
@@ -335,12 +433,10 @@ watch([messages, loading], () => {
   .chat-window {
     width: calc(100vw - 32px);
     height: 65vh;
-    right: 16px;
-    bottom: 16px;
   }
   .chat-trigger {
-    bottom: 16px;
-    right: 16px;
+    width: 42px;
+    height: 42px;
   }
 }
 </style>

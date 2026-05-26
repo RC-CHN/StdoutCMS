@@ -67,25 +67,25 @@ services:
       minio-init:
         condition: service_completed_successfully
     environment:
-      APP_PORT: "8080"
+      APP_PORT: ${APP_PORT:-8080}
       APP_ENV: ${APP_ENV:-production}
-      DATABASE_URL: postgres://${DB_USER:-blog}:${DB_PASSWORD:-blog}@postgres:5432/${DB_NAME:-stdoutcms}?sslmode=disable
-      REDIS_URL: redis:6379
+      DATABASE_URL: ${DATABASE_URL:-postgres://${DB_USER:-blog}:${DB_PASSWORD:-blog}@postgres:5432/${DB_NAME:-stdoutcms}?sslmode=disable}
+      REDIS_URL: ${REDIS_URL:-redis:6379}
       SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-root}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-root}
-      STORAGE_ENDPOINT: minio:9000
-      STORAGE_BUCKET: blog-assets
-      STORAGE_REGION: ""
-      STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      STORAGE_CDN_BASE_URL: /img
-      STORAGE_USE_SSL: "false"
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-minio:9000}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-blog-assets}
+      STORAGE_REGION: ${STORAGE_REGION:-}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-${MINIO_ROOT_USER:-minioadmin}}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-${MINIO_ROOT_PASSWORD:-minioadmin}}
+      STORAGE_CDN_BASE_URL: ${STORAGE_CDN_BASE_URL:-/img}
+      STORAGE_USE_SSL: ${STORAGE_USE_SSL:-false}
       # LLM (leave empty to disable AI features entirely)
       LLM_ENDPOINT: ${LLM_ENDPOINT:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
-      LLM_DAILY_LIMIT: "${LLM_DAILY_LIMIT:-50}"
+      LLM_DAILY_LIMIT: ${LLM_DAILY_LIMIT:-50}
 
   frontend:
     build: ./frontend

@@ -181,7 +181,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 }
 
 .article-content :deep(.md-image img) {
-  cursor: pointer;
+  cursor: url('/win-95-98/hand.cur'), pointer;
 }
 
 /* ---- lightbox ---- */
@@ -229,7 +229,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   color: var(--fg);
   font-family: var(--font-main);
   font-weight: bold;
-  cursor: pointer;
+  cursor: url('/win-95-98/hand.cur'), pointer;
   padding: 2px 6px;
 }
 

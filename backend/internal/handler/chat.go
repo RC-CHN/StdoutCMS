@@ -134,6 +134,21 @@ func doChat(rd *store.Redis, cfg *config.Config, sid, q string, post *store.Post
 		return nil, fmt.Errorf("redis read: %w", err)
 	}
 
+	// 检查文章上下文是否变化（新会话 / 切换文章 / 从无到有）
+	ctxChanged := false
+	currentCtx := ""
+	if post != nil {
+		currentCtx = post.Slug
+	}
+	if isNewSession {
+		ctxChanged = post != nil
+	} else if post != nil {
+		lastCtx, _ := rd.ChatGetLastCtx(sid)
+		if lastCtx != currentCtx {
+			ctxChanged = true
+		}
+	}
+
 	// build messages array
 	messages := make([]chatMessage, 0, len(history)+5)
 
@@ -143,12 +158,14 @@ func doChat(rd *store.Redis, cfg *config.Config, sid, q string, post *store.Post
 		Content: buildSystemPrompt(),
 	})
 
-	// 新会话且有文章时，用 <article> 标签包裹文章上下文作为独立消息对
-	if isNewSession && post != nil {
+	// 文章上下文变化时注入新文章，历史消息保留不丢
+	if ctxChanged && post != nil {
 		messages = append(messages,
 			chatMessage{Role: "user", Content: buildArticleContext(post)},
 			chatMessage{Role: "assistant", Content: "已了解文章内容，请问。"},
 		)
+		// 记录当前 ctx，下次请求比对
+		_ = rd.ChatSetLastCtx(sid, currentCtx, time.Hour)
 	}
 
 	// history
