@@ -7,6 +7,7 @@ export interface MetaResponse {
   posts: number
   projects: number
   goVersion: string
+  ai: boolean
 }
 
 export function fetchMeta() {

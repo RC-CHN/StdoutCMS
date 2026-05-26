@@ -4,10 +4,13 @@ import { useRoute } from 'vue-router'
 import TerminalHeader from './components/TerminalHeader.vue'
 import TerminalFooter from './components/TerminalFooter.vue'
 import FileListing from './components/FileListing.vue'
+import ChatWidget from './components/ChatWidget.vue'
+import { fetchMeta } from './api/meta'
 
 const route = useRoute()
 
 const THEME_KEY = 'blog_theme_pref'
+const aiEnabled = ref(false)
 
 function initTheme() {
   const saved = localStorage.getItem(THEME_KEY)
@@ -18,6 +21,9 @@ function initTheme() {
 
 onMounted(() => {
   initTheme()
+  fetchMeta()
+    .then(m => { aiEnabled.value = m.ai })
+    .catch(() => { aiEnabled.value = false })
 })
 
 /* 侧边栏 toggle */
@@ -75,6 +81,7 @@ const activeArticleSlug = computed(() =>
     </div>
 
     <TerminalFooter />
+    <ChatWidget v-if="aiEnabled" />
   </div>
 </template>
 
