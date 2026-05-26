@@ -63,7 +63,7 @@ watch(() => route.fullPath, startTypeWriter)
     </button>
 
     <div class="title-block">
-      <h1 @click="router.push('/')">SYS_BLOG.EXE</h1>
+      <h1 @click="router.push('/')">STDOUT_CMS_ELF</h1>
       <div class="status-line">
         <span>mode: {{ route.name === 'home' ? 'browse' : route.name }} | </span>
         <span>{{ displayed }}</span><span class="cursor"></span>

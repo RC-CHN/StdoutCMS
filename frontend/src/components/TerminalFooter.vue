@@ -22,7 +22,7 @@ const marqueeText = computed(() => {
   if (route.name === 'projects') {
     return '*** PROJECTS *** COMPILED FROM IDEAS *** SHIPPED WITH LOVE ***'
   }
-  const parts = ['*** SYS_BLOG.EXE ***']
+  const parts = ['*** STDOUT_CMS_ELF ***']
   if (m) parts.push(`POSTS: ${m.posts}`)
   if (m) parts.push(`PROJECTS: ${m.projects}`)
   if (m) parts.push(`UPTIME: ${m.uptime}`)

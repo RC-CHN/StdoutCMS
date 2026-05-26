@@ -45,7 +45,7 @@ func Meta(pg *store.Postgres) gin.HandlerFunc {
 		posts, _ := pg.CountPosts()
 		projects, _ := pg.CountProjects()
 		c.JSON(http.StatusOK, MetaResponse{
-			App:       "SYS_BLOG.EXE",
+			App:       "STDOUT_CMS_ELF",
 			Version:   Version,
 			Uptime:    time.Since(startTime).Truncate(time.Second).String(),
 			Posts:     posts,

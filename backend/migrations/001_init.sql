@@ -1,4 +1,4 @@
--- SYS_BLOG.EXE — 初始建表
+-- STDOUT_CMS_ELF — 初始建表
 -- 回滚: DROP TABLE IF EXISTS posts, projects, admins CASCADE;
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
