@@ -46,17 +46,6 @@ summary {
   cursor: url('/win-95-98/hand.cur'), pointer;
 }
 
-input[type='text'],
-input[type='password'],
-input[type='email'],
-input[type='search'],
-input[type='url'],
-input[type='number'],
-textarea,
-[contenteditable='true'] {
-  cursor: url('/win-95-98/Beam.cur'), text;
-}
-
 [disabled],
 .disabled {
   cursor: url('/win-95-98/ilegal.cur'), not-allowed;

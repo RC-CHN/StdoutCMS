@@ -5,7 +5,7 @@ import { useChat } from '../composables/useChat'
 import { parseMarkdown } from '../utils/md'
 
 const route = useRoute()
-const { messages, input, loading, error, canSend, send, clear } = useChat()
+const { messages, input, loading, thinking, error, canSend, send, clear } = useChat()
 
 const isOpen = ref(false)
 const scrollRef = ref<HTMLDivElement>()
@@ -165,15 +165,15 @@ onUnmounted(() => {
         <div class="chat-msg-prefix">
           {{ msg.role === 'user' ? '>' : '[STDOUT_CMS_ELF]' }}
         </div>
-        <div class="chat-msg-body" v-html="parseMarkdown(msg.content)" />
-      </div>
-
-      <!-- 加载中 -->
-      <div v-if="loading" class="chat-msg assistant">
-        <div class="chat-msg-prefix">[STDOUT_CMS_ELF]</div>
-        <div class="chat-msg-body">
-          <span class="typing-cursor">█</span>
+        <!-- 最后一个 assistant 空内容 + 加载中：思考 / 光标 -->
+        <div
+          v-if="msg.role === 'assistant' && !msg.content && loading && i === messages.length - 1"
+          class="chat-msg-body"
+        >
+          <span v-if="thinking" class="thinking-indicator">thinking...</span>
+          <span v-else class="typing-cursor">█</span>
         </div>
+        <div v-else class="chat-msg-body" v-html="parseMarkdown(msg.content)" />
       </div>
 
       <!-- 错误 -->
@@ -426,6 +426,17 @@ onUnmounted(() => {
 }
 @keyframes blink {
   50% { opacity: 0; }
+}
+
+/* ---- 思考中 ---- */
+.thinking-indicator {
+  color: var(--muted);
+  font-style: italic;
+  animation: think-pulse 1.5s ease-in-out infinite;
+}
+@keyframes think-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
 }
 
 /* ---- 响应式 ---- */

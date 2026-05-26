@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { chat } from '../api/chat'
+import { chatStream } from '../api/chat'
 
 const CHAT_SID_KEY = 'chat_session_id'
 
@@ -13,6 +13,7 @@ export function useChat() {
   const messages = ref<ChatMessage[]>([])
   const input = ref('')
   const loading = ref(false)
+  const thinking = ref(false)
   const error = ref('')
   const sid = ref(localStorage.getItem(CHAT_SID_KEY) || '')
 
@@ -25,28 +26,45 @@ export function useChat() {
     loading.value = true
     error.value = ''
 
+    // user message
     messages.value.push({
       role: 'user',
       content: q.trim(),
       timestamp: Date.now(),
     })
 
-    try {
-      const res = await chat({ q: q.trim(), ctx, sid: sid.value || undefined })
+    // placeholder assistant message — filled in real-time by deltas
+    const aiIdx = messages.value.length
+    messages.value.push({
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+    })
 
-      sid.value = res.sid
-      localStorage.setItem(CHAT_SID_KEY, res.sid)
-
-      messages.value.push({
-        role: 'assistant',
-        content: res.a,
-        timestamp: Date.now(),
-      })
-    } catch (e: any) {
-      error.value = e.message || 'connection error'
-    } finally {
-      loading.value = false
-    }
+    await chatStream(
+      { q: q.trim(), ctx, sid: sid.value || undefined },
+      {
+        onDelta(delta: string, newSid: string) {
+          sid.value = newSid
+          localStorage.setItem(CHAT_SID_KEY, newSid)
+          messages.value[aiIdx].content += delta
+        },
+        onThinking(t: boolean) {
+          thinking.value = t
+        },
+        onDone(newSid: string) {
+          sid.value = newSid
+          localStorage.setItem(CHAT_SID_KEY, newSid)
+          thinking.value = false
+          loading.value = false
+        },
+        onError(msg: string) {
+          thinking.value = false
+          error.value = msg
+          loading.value = false
+        },
+      },
+    )
   }
 
   function clear() {
@@ -59,6 +77,7 @@ export function useChat() {
     messages,
     input,
     loading,
+    thinking,
     error,
     sid,
     canSend,
