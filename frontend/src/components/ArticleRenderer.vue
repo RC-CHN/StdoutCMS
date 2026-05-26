@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { parseMarkdown } from '../utils/md'
 
 const props = defineProps<{
@@ -7,10 +7,50 @@ const props = defineProps<{
 }>()
 
 const html = computed(() => parseMarkdown(props.content))
+
+// lightbox
+const lbOpen = ref(false)
+const lbSrc = ref('')
+const lbAlt = ref('')
+
+function openLightbox(img: HTMLImageElement) {
+  lbSrc.value = img.src
+  lbAlt.value = img.alt || 'image'
+  lbOpen.value = true
+}
+
+function closeLightbox() {
+  lbOpen.value = false
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') closeLightbox()
+}
+
+function onClick(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  const img = target.closest('.md-image img') as HTMLImageElement | null
+  if (img) openLightbox(img)
+}
+
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
-  <div class="article-content" v-html="html" />
+  <div class="article-content" v-html="html" @click="onClick" />
+
+  <teleport to="body">
+    <div v-if="lbOpen" class="lb-backdrop" @click.self="closeLightbox">
+      <div class="lb-frame">
+        <div class="lb-bar">
+          <span>> viewing: {{ lbAlt }}</span>
+          <button class="lb-close" @click="closeLightbox">[X]</button>
+        </div>
+        <img :src="lbSrc" :alt="lbAlt" class="lb-image" />
+      </div>
+    </div>
+  </teleport>
 </template>
 
 <style scoped>
@@ -138,5 +178,71 @@ const html = computed(() => parseMarkdown(props.content))
 
 .article-content :deep(.md-image img:hover) {
   filter: grayscale(0);
+}
+
+.article-content :deep(.md-image img) {
+  cursor: pointer;
+}
+
+/* ---- lightbox ---- */
+
+.lb-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: lb-fade-in 0.15s ease;
+}
+
+@keyframes lb-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lb-frame {
+  max-width: 90vw;
+  max-height: 90vh;
+  border: 2px solid var(--fg);
+  box-shadow: 8px 8px 0px var(--fg);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.lb-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 2px dashed var(--border);
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: var(--muted);
+}
+
+.lb-close {
+  background: none;
+  border: none;
+  color: var(--fg);
+  font-family: var(--font-main);
+  font-weight: bold;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.lb-close:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.lb-image {
+  display: block;
+  max-width: 90vw;
+  max-height: calc(90vh - 40px);
+  object-fit: contain;
+  filter: none;
 }
 </style>
