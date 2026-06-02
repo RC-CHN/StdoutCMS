@@ -124,7 +124,7 @@ func (p *Postgres) ListPostsAdmin(page, size int) ([]Post, int, error) {
 	ctx := context.Background()
 
 	var total int
-	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts").Scan(&total)
+	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts WHERE slug != 'about'").Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -133,6 +133,7 @@ func (p *Postgres) ListPostsAdmin(page, size int) ([]Post, int, error) {
 	rows, err := p.pool.Query(ctx, `
 		SELECT slug, title, content, excerpt, tags, author, word_count, read_time, published, created_at, updated_at
 		FROM posts
+		WHERE slug != 'about'
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
 	`, size, offset)
