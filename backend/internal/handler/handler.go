@@ -240,6 +240,9 @@ func CreatePost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if po.Tags == nil {
+			po.Tags = []string{}
+		}
 		if po.Slug == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "slug is required"})
 			return
@@ -260,6 +263,9 @@ func UpdatePost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 		if err := c.ShouldBindJSON(&po); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
+		}
+		if po.Tags == nil {
+			po.Tags = []string{}
 		}
 		if err := pg.UpdatePost(slug, &po); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
