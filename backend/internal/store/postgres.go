@@ -56,7 +56,7 @@ func (p *Postgres) ListPosts(page, size int) ([]Post, int, error) {
 	ctx := context.Background()
 
 	var total int
-	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM postsWHERE published = true").Scan(&total)
+	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts WHERE published = true").Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
