@@ -135,7 +135,6 @@ async function handleSave() {
       status.value = `SAVED: ${draft.value.slug}.md`
       router.push(`/admin/edit/${draft.value.slug}`)
     }
-    clear()
     showFeedback(`${isEdit ? slugParam : draft.value.slug}.md saved`, 'ok')
   } catch (e: any) {
     status.value = 'ERROR: ' + (e.message || 'save failed')
