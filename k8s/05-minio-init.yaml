@@ -1,0 +1,44 @@
+---
+# One-shot Job: creates the blog-assets bucket with public-read policy.
+# Idempotent — safe to re-run on upgrades.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+  namespace: stdoutcms
+  labels:
+    app: minio-init
+spec:
+  ttlSecondsAfterFinished: 300 # auto-clean after 5 min
+  template:
+    metadata:
+      labels:
+        app: minio-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: minio/mc
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Waiting for MinIO..."
+              until mc alias set local http://minio:9000 \
+                ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} 2>/dev/null; do
+                sleep 3
+              done
+              echo "MinIO is up — creating bucket"
+              mc mb local/blog-assets --ignore-existing
+              mc anonymous set download local/blog-assets
+              echo "Bucket blog-assets ready"
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: stdoutcms-secret
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stdoutcms-secret
+                  key: MINIO_ROOT_PASSWORD

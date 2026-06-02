@@ -1,0 +1,48 @@
+---
+# Non-sensitive configuration shared by backend pods.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stdoutcms-config
+  namespace: stdoutcms
+data:
+  APP_PORT: "8080"
+  APP_ENV: "production"
+  REDIS_URL: "redis:6379"
+  STORAGE_ENDPOINT: "minio:9000"
+  STORAGE_BUCKET: "blog-assets"
+  STORAGE_REGION: ""
+  STORAGE_CDN_BASE_URL: "/img"
+  STORAGE_USE_SSL: "false"
+  STORAGE_ACCESS_KEY: "minioadmin"
+  ADMIN_USERNAME: "root"
+  # LLM — leave empty to disable AI features
+  LLM_ENDPOINT: ""
+  LLM_MODEL: ""
+  LLM_DAILY_LIMIT: "50"
+  LLM_SYSTEM_PROMPT: ""
+
+---
+# Secrets — REPLACE dummy values before applying.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: stdoutcms-secret
+  namespace: stdoutcms
+type: Opaque
+stringData:
+  # PostgreSQL
+  DB_USER: "blog"
+  DB_PASSWORD: "blog"                         # CHANGE ME
+  DB_NAME: "stdoutcms"
+  DATABASE_URL: "postgres://blog:blog@postgres:5432/stdoutcms?sslmode=disable"
+  # Session (generate with: openssl rand -hex 32)
+  SESSION_SECRET: "change-me-in-production"   # CHANGE ME
+  # Admin
+  ADMIN_PASSWORD: "root"                      # CHANGE ME
+  # MinIO
+  MINIO_ROOT_USER: "minioadmin"
+  MINIO_ROOT_PASSWORD: "minioadmin"           # CHANGE ME
+  STORAGE_SECRET_KEY: "minioadmin"            # must == MINIO_ROOT_PASSWORD
+  # LLM (optional)
+  LLM_API_KEY: ""
