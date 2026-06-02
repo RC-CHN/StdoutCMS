@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { getPostAdmin, createPost, updatePost } from '../../api/posts'
-import type { PostPayload } from '../../api/posts'
+import { getAboutAdmin, updateAbout } from '../../api/about'
+import type { AboutPayload } from '../../api/about'
 import AdminNav from '../../components/AdminNav.vue'
 import ArticleRenderer from '../../components/ArticleRenderer.vue'
 import TerminalFeedback from '../../components/TerminalFeedback.vue'
 import { useImagePaste } from '../../composables/useImagePaste'
 
-const SLUG = 'about'
-const post = ref<PostPayload>({ slug: SLUG, title: '', content: '', published: true })
-const isNew = ref(true)
+const about = ref<AboutPayload>({ title: '', content: '' })
 const status = ref('')
 const saving = ref(false)
 const feedback = ref<{ msg: string; type: 'ok' | 'err' } | null>(null)
@@ -29,27 +27,20 @@ onUnmounted(() => detach())
 
 onMounted(async () => {
   try {
-    const data = await getPostAdmin(SLUG)
-    post.value = data
-    isNew.value = false
-    status.value = `loaded: ${SLUG}.md`
+    const data = await getAboutAdmin()
+    about.value = data
+    status.value = 'loaded: about'
   } catch {
-    status.value = 'creating new about.md'
+    status.value = 'creating new about'
   }
 })
 
 async function handleSave() {
   saving.value = true
   try {
-    if (isNew.value) {
-      await createPost(post.value)
-      isNew.value = false
-      status.value = `created: ${SLUG}.md`
-    } else {
-      await updatePost(SLUG, post.value)
-      status.value = `saved: ${SLUG}.md`
-    }
-    showFeedback(`${SLUG}.md saved`, 'ok')
+    await updateAbout(about.value)
+    status.value = 'saved: about'
+    showFeedback('about saved', 'ok')
   } catch (e: any) {
     status.value = 'ERROR: ' + (e.message || 'save failed')
     showFeedback(e.message || 'save failed', 'err')
@@ -74,7 +65,7 @@ async function handleSave() {
   <div class="meta-panel">
     <div class="meta-row">
       <label>TITLE:</label>
-      <input v-model="post.title" type="text" placeholder="About page title" />
+      <input v-model="about.title" type="text" placeholder="About page title" />
     </div>
   </div>
 
@@ -82,7 +73,7 @@ async function handleSave() {
     <div class="editor-pane">
       <div class="pane-label">RAW // MARKDOWN</div>
       <textarea
-        v-model="post.content"
+        v-model="about.content"
         class="editor-textarea"
           ref="textareaRef"
         placeholder="Write your about page in markdown..."
@@ -92,7 +83,7 @@ async function handleSave() {
     <div class="preview-pane">
       <div class="pane-label">PREVIEW // RENDERED</div>
       <div class="preview-scroll">
-        <ArticleRenderer :content="post.content" />
+        <ArticleRenderer :content="about.content" />
       </div>
     </div>
   </div>

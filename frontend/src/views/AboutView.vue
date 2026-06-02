@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getPost } from '../api/posts'
-import type { PostPayload } from '../api/posts'
+import { getAbout } from '../api/about'
+import type { AboutPayload } from '../api/about'
 import ArticleRenderer from '../components/ArticleRenderer.vue'
 
-const post = ref<PostPayload | null>(null)
+const about = ref<AboutPayload | null>(null)
 const loading = ref(false)
 const error = ref('')
 
 onMounted(async () => {
   loading.value = true
   try {
-    post.value = await getPost('about')
+    about.value = await getAbout()
   } catch {
-    error.value = 'about.md not found'
+    error.value = 'about not found'
   } finally {
     loading.value = false
   }
@@ -28,12 +28,12 @@ onMounted(async () => {
   <div v-if="loading" class="status-line">cat about.md...</div>
   <div v-else-if="error" class="status-line" style="color: #ff4444;">ERROR: {{ error }}</div>
 
-  <template v-else-if="post">
+  <template v-else-if="about">
     <div class="about-header">
-      <h1 class="about-title">{{ post.title }}</h1>
+      <h1 class="about-title">{{ about.title }}</h1>
     </div>
     <article class="article-content">
-      <ArticleRenderer :content="post.content" />
+      <ArticleRenderer :content="about.content" />
     </article>
     <div class="eof-marker">EOF</div>
   </template>

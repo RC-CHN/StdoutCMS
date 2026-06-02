@@ -32,3 +32,10 @@ type Admin struct {
 	Username     string
 	PasswordHash string
 }
+
+// About is the singleton about-page row. Only one row exists at a time.
+type About struct {
+	Title     string    `json:"title"`
+	Content   string    `json:"content"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}

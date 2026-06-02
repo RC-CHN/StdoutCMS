@@ -33,7 +33,7 @@ func NewPostgres(dsn string) (*Postgres, error) {
 func (p *Postgres) CountPosts() (int, error) {
 	ctx := context.Background()
 	var n int
-	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts WHERE published = true").Scan(&n)
+	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM postsWHERE published = true").Scan(&n)
 	return n, err
 }
 
@@ -56,7 +56,7 @@ func (p *Postgres) ListPosts(page, size int) ([]Post, int, error) {
 	ctx := context.Background()
 
 	var total int
-	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts WHERE published = true").Scan(&total)
+	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM postsWHERE published = true").Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -124,7 +124,7 @@ func (p *Postgres) ListPostsAdmin(page, size int) ([]Post, int, error) {
 	ctx := context.Background()
 
 	var total int
-	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts WHERE slug != 'about'").Scan(&total)
+	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts").Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -133,7 +133,6 @@ func (p *Postgres) ListPostsAdmin(page, size int) ([]Post, int, error) {
 	rows, err := p.pool.Query(ctx, `
 		SELECT slug, title, content, excerpt, tags, author, word_count, read_time, published, created_at, updated_at
 		FROM posts
-		WHERE slug != 'about'
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
 	`, size, offset)
@@ -315,5 +314,36 @@ func (p *Postgres) ExecMigration(sql string) error {
 		return nil
 	}
 	_, err = p.pool.Exec(ctx, sql)
+	return err
+}
+
+// ExecRaw runs SQL unconditionally (used for subsequent migrations).
+func (p *Postgres) ExecRaw(sql string) error {
+	ctx := context.Background()
+	_, err := p.pool.Exec(ctx, sql)
+	return err
+}
+
+// ---- About ----
+
+func (p *Postgres) GetAbout() (*About, error) {
+	ctx := context.Background()
+	var a About
+	err := p.pool.QueryRow(ctx, `
+		SELECT title, content, updated_at FROM about ORDER BY id LIMIT 1
+	`).Scan(&a.Title, &a.Content, &a.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &a, nil
+}
+
+func (p *Postgres) UpdateAbout(title, content string) error {
+	ctx := context.Background()
+	_, err := p.pool.Exec(ctx, `
+		INSERT INTO about (id, title, content, updated_at)
+		VALUES (1, $1, $2, now())
+		ON CONFLICT (id) DO UPDATE SET title = $1, content = $2, updated_at = now()
+	`, title, content)
 	return err
 }

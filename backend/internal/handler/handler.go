@@ -390,6 +390,47 @@ func UploadImage(s3 *storage.S3, cfg *config.Config) gin.HandlerFunc {
 	}
 }
 
+// ---- Admin About ----
+
+func GetAboutAdmin(pg *store.Postgres) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		a, err := pg.GetAbout()
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "about not found"})
+			return
+		}
+		c.JSON(http.StatusOK, a)
+	}
+}
+
+func UpdateAbout(pg *store.Postgres) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var a store.About
+		if err := c.ShouldBindJSON(&a); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := pg.UpdateAbout(a.Title, a.Content); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "saved"})
+	}
+}
+
+// ---- Public About (no auth needed) ----
+
+func GetAbout(pg *store.Postgres) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		a, err := pg.GetAbout()
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "about not found"})
+			return
+		}
+		c.JSON(http.StatusOK, a)
+	}
+}
+
 // ---- Helpers ----
 
 func generateToken() string {

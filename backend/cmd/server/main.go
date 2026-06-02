@@ -58,7 +58,17 @@ func main() {
 		logger.Error("failed to run migration", "error", err)
 		os.Exit(1)
 	}
-	logger.Info("migration complete")
+	logger.Info("migration 001 complete")
+
+	// migration 002 — standalone about table
+	m2Path := filepath.Join(filepath.Dir(migrationPath), "002_about.sql")
+	if m2, err := os.ReadFile(m2Path); err == nil {
+		if err := pg.ExecRaw(string(m2)); err != nil {
+			logger.Error("failed to run migration 002", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("migration 002 complete")
+	}
 
 	rd, err := store.NewRedis(cfg.RedisURL)
 	if err != nil {
@@ -102,6 +112,7 @@ func main() {
 	r.GET("/api/v1/posts/:slug", handler.GetPost(pg, rd))
 	r.GET("/api/v1/projects", handler.ListProjects(pg, rd))
 	r.GET("/api/v1/projects/:id", handler.GetProject(pg))
+	r.GET("/api/v1/about", handler.GetAbout(pg))
 
 	// AI chat (public) — only if LLM is configured
 	if cfg.LLM.IsEnabled() {
@@ -129,6 +140,8 @@ func main() {
 		if cfg.LLM.IsEnabled() {
 			admin.POST("/ai/chat", handler.AdminChat(pg, rd, cfg))
 		}
+			admin.GET("/about", handler.GetAboutAdmin(pg))
+			admin.PUT("/about", handler.UpdateAbout(pg))
 	}
 
 	// ---- Background scheduler ----
