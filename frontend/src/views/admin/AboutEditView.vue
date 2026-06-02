@@ -4,6 +4,7 @@ import { getPostAdmin, createPost, updatePost } from '../../api/posts'
 import type { PostPayload } from '../../api/posts'
 import AdminNav from '../../components/AdminNav.vue'
 import ArticleRenderer from '../../components/ArticleRenderer.vue'
+import TerminalFeedback from '../../components/TerminalFeedback.vue'
 import { useImagePaste } from '../../composables/useImagePaste'
 
 const SLUG = 'about'
@@ -11,6 +12,13 @@ const post = ref<PostPayload>({ slug: SLUG, title: '', content: '', published: t
 const isNew = ref(true)
 const status = ref('')
 const saving = ref(false)
+const feedback = ref<{ msg: string; type: 'ok' | 'err' } | null>(null)
+const feedbackTrigger = ref(0)
+
+function showFeedback(msg: string, type: 'ok' | 'err') {
+  feedback.value = { msg, type }
+  feedbackTrigger.value++
+}
 
 // image paste upload
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -41,8 +49,10 @@ async function handleSave() {
       await updatePost(SLUG, post.value)
       status.value = `saved: ${SLUG}.md`
     }
+    showFeedback(`${SLUG}.md saved`, 'ok')
   } catch (e: any) {
     status.value = 'ERROR: ' + (e.message || 'save failed')
+    showFeedback(e.message || 'save failed', 'err')
   } finally {
     saving.value = false
   }
@@ -92,6 +102,13 @@ async function handleSave() {
       {{ saving ? '[ SAVING... ]' : '[ SAVE ]' }}
     </button>
   </div>
+
+  <TerminalFeedback
+    :message="feedback?.msg ?? null"
+    :type="feedback?.type ?? 'info'"
+    :duration="feedback?.type === 'err' ? 0 : 4000"
+    :trigger="feedbackTrigger"
+  />
 </template>
 
 <style scoped>

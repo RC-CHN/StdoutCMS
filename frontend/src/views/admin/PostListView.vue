@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { listPostsAdmin, deletePost as apiDeletePost } from '../../api/posts'
 import type { PostPayload } from '../../api/posts'
 import AdminNav from '../../components/AdminNav.vue'
+import TerminalFeedback from '../../components/TerminalFeedback.vue'
 
 const router = useRouter()
 
@@ -13,6 +14,16 @@ const posts = ref<PostPayload[]>([])
 const total = ref(0)
 const loading = ref(false)
 const error = ref('')
+
+const feedbackMsg = ref<string | null>(null)
+const feedbackType = ref<'ok' | 'err'>('ok')
+const feedbackTrigger = ref(0)
+
+function showFeedback(msg: string, type: 'ok' | 'err') {
+  feedbackMsg.value = msg
+  feedbackType.value = type
+  feedbackTrigger.value++
+}
 
 const totalPages = computed(() => Math.ceil(total.value / PAGE_SIZE))
 
@@ -39,11 +50,13 @@ function wordCount(content: string) {
 }
 
 async function deletePost(slug: string) {
+  if (!confirm(`Delete "${slug}.md"?`)) return
   try {
     await apiDeletePost(slug)
+    showFeedback(`${slug}.md deleted`, 'ok')
     fetchPosts()
   } catch (e: any) {
-    window.alert('DELETE failed: ' + (e.message || 'unknown'))
+    showFeedback(e.message || 'delete failed', 'err')
   }
 }
 
@@ -102,6 +115,13 @@ onMounted(fetchPosts)
     <span class="status-line">{{ total }} file(s) found</span>
   </div>
 
+  <TerminalFeedback
+    :message="feedbackMsg"
+    :type="feedbackType"
+    :duration="feedbackType === 'err' ? 0 : 4000"
+    :trigger="feedbackTrigger"
+  />
+
   <div class="admin-prompt" style="margin-top: 2rem;">
     root@k8s-node ~/admin $<span class="cursor"></span>
   </div>
@@ -118,54 +138,68 @@ onMounted(fetchPosts)
   color: var(--muted);
 }
 
-.post-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 2rem;
-  font-size: 0.9rem;
+.status-line {
+  font-family: var(--font-main);
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
 }
 
-.post-table th,
-.post-table td {
-  border: 1px solid var(--border);
-  padding: 8px 12px;
-  text-align: left;
+.cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  background: var(--fg);
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.post-table {
+  width: 100%;
+  border: 2px solid var(--border);
+  border-collapse: collapse;
+  font-family: var(--font-main);
+  font-size: 0.85rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.5rem;
 }
 
 .post-table th {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 2px solid var(--border);
   background: var(--fg);
   color: var(--bg);
-  font-weight: bold;
-  text-transform: uppercase;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+}
+
+.post-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
 }
 
 .post-table tr:hover td {
-  background: rgba(128, 128, 128, 0.05);
+  background: var(--fg);
+  color: var(--bg);
 }
 
 .file-link {
   color: var(--fg);
-  text-decoration: underline;
-  text-decoration-style: dashed;
+  text-decoration: none;
+  font-weight: bold;
 }
 
 .file-link:hover {
-  background: var(--fg);
-  color: var(--bg);
-  text-decoration: none;
+  text-decoration: underline;
 }
 
-.btn-sm {
-  padding: 4px 12px;
-  font-size: 0.8rem;
-  margin: 0 5px 0 0;
-  display: inline-block;
-  text-align: center;
-  min-width: 50px;
-  line-height: 1.4;
-  vertical-align: middle;
-  box-sizing: border-box;
+.btn-danger {
+  color: #ff4444;
+  border-color: #ff4444;
 }
 
 .btn-danger:hover {
@@ -173,13 +207,12 @@ onMounted(fetchPosts)
   color: #fff;
 }
 
-/* 分页 */
 .page-nav {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 1rem;
-  margin: 1.5rem 0;
+  margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
   border-bottom: 2px dashed var(--border);
 }
@@ -191,39 +224,16 @@ onMounted(fetchPosts)
   text-align: center;
 }
 
-button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-button:disabled:hover {
-  background: var(--bg);
-  color: var(--fg);
-}
-
 .admin-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 2px dashed var(--border);
-  padding-top: 1.5rem;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.status-line {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-@media (max-width: 600px) {
-  .post-table th,
-  .post-table td {
-    padding: 6px 8px;
-    font-size: 0.8rem;
-  }
-  .post-table th:nth-child(1),
-  .post-table td:nth-child(1),
-  .post-table th:nth-child(2),
-  .post-table td:nth-child(2) {
-    display: none;
-  }
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 </style>

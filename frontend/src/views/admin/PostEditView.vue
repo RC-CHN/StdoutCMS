@@ -7,6 +7,7 @@ import { useDraft } from '../../composables/useDraft'
 import { useImagePaste } from '../../composables/useImagePaste'
 import ArticleRenderer from '../../components/ArticleRenderer.vue'
 import AdminNav from '../../components/AdminNav.vue'
+import TerminalFeedback from '../../components/TerminalFeedback.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,6 +17,15 @@ const isEdit = !!slugParam
 const { draft, lastSaved, save, clear, restoreFromPost } = useDraft()
 const status = ref('')
 const saving = ref(false)
+const feedbackMsg = ref<string | null>(null)
+const feedbackType = ref<'ok' | 'err'>('ok')
+const feedbackTrigger = ref(0)
+
+function showFeedback(msg: string, type: 'ok' | 'err') {
+  feedbackMsg.value = msg
+  feedbackType.value = type
+  feedbackTrigger.value++
+}
 
 // image paste upload
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -95,8 +105,10 @@ async function handlePublish() {
       router.push(`/admin/edit/${draft.value.slug}`)
     }
     clear()
+    showFeedback(`${draft.value.slug}.md published`, 'ok')
   } catch (e: any) {
     status.value = 'ERROR: ' + (e.message || 'publish failed')
+    showFeedback(e.message || 'publish failed', 'err')
   } finally {
     saving.value = false
   }
@@ -124,8 +136,10 @@ async function handleSave() {
       router.push(`/admin/edit/${draft.value.slug}`)
     }
     clear()
+    showFeedback(`${isEdit ? slugParam : draft.value.slug}.md saved`, 'ok')
   } catch (e: any) {
     status.value = 'ERROR: ' + (e.message || 'save failed')
+    showFeedback(e.message || 'save failed', 'err')
   } finally {
     saving.value = false
   }
@@ -227,6 +241,13 @@ function statusClass() {
   <div class="back-link">
     <RouterLink to="/admin" class="btn">cd ..</RouterLink>
   </div>
+
+  <TerminalFeedback
+    :message="feedbackMsg"
+    :type="feedbackType"
+    :duration="feedbackType === 'err' ? 0 : 4000"
+    :trigger="feedbackTrigger"
+  />
 </template>
 
 <style scoped>

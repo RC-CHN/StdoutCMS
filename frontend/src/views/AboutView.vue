@@ -29,6 +29,9 @@ onMounted(async () => {
   <div v-else-if="error" class="status-line" style="color: #ff4444;">ERROR: {{ error }}</div>
 
   <template v-else-if="post">
+    <div class="about-header">
+      <h1 class="about-title">{{ post.title }}</h1>
+    </div>
     <article class="article-content">
       <ArticleRenderer :content="post.content" />
     </article>
@@ -39,6 +42,39 @@ onMounted(async () => {
 <style scoped>
 .prompt-line { margin-bottom: 2rem; font-weight: bold; }
 .status-line { color: var(--muted); font-size: 0.85rem; }
+
+/* ---- ASCII box header ---- */
+.about-header {
+  position: relative;
+  border: 4px double var(--border);
+  padding: 1.8rem 2rem 1.5rem;
+  margin-bottom: 2.5rem;
+  text-align: center;
+  box-shadow: 6px 6px 0 var(--border);
+  background: var(--bg);
+}
+
+.about-header::before {
+  content: "[ ABOUT.TXT ]";
+  position: absolute;
+  top: -0.65rem;
+  left: 1.5rem;
+  background: var(--bg);
+  padding: 0 8px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+.about-title {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin: 0;
+  letter-spacing: 2px;
+  color: var(--fg);
+}
+
 .article-content { font-size: 1.05rem; }
 .article-content :deep(h2) { margin-top: 2.5rem; margin-bottom: 1rem; color: var(--fg); }
 .article-content :deep(h2::before) { content: ">> "; color: var(--muted); }

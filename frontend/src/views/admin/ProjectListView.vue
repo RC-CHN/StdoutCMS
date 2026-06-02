@@ -4,12 +4,23 @@ import { RouterLink, useRouter } from 'vue-router'
 import { listProjectsAdmin, deleteProject as apiDelete } from '../../api/projects'
 import type { ProjectPayload } from '../../api/projects'
 import AdminNav from '../../components/AdminNav.vue'
+import TerminalFeedback from '../../components/TerminalFeedback.vue'
 
 const router = useRouter()
 
 const projects = ref<ProjectPayload[]>([])
 const loading = ref(false)
 const error = ref('')
+
+const feedbackMsg = ref<string | null>(null)
+const feedbackType = ref<'ok' | 'err'>('ok')
+const feedbackTrigger = ref(0)
+
+function showFeedback(msg: string, type: 'ok' | 'err') {
+  feedbackMsg.value = msg
+  feedbackType.value = type
+  feedbackTrigger.value++
+}
 
 async function fetch() {
   loading.value = true
@@ -28,9 +39,10 @@ async function deleteProject(id: number, name: string) {
   if (!confirm(`Delete project "${name}"?`)) return
   try {
     await apiDelete(id)
+    showFeedback(`${name} deleted`, 'ok')
     fetch()
   } catch (e: any) {
-    window.alert('DEL failed: ' + (e.message || 'unknown'))
+    showFeedback(e.message || 'delete failed', 'err')
   }
 }
 
@@ -77,6 +89,13 @@ onMounted(fetch)
     <RouterLink to="/admin/projects/edit" class="btn">+ NEW_PROJECT.SH</RouterLink>
     <span class="status-line">{{ projects.length }} file(s) found</span>
   </div>
+
+  <TerminalFeedback
+    :message="feedbackMsg"
+    :type="feedbackType"
+    :duration="feedbackType === 'err' ? 0 : 4000"
+    :trigger="feedbackTrigger"
+  />
 
   <div class="admin-prompt" style="margin-top: 2rem;">
     root@k8s-node ~/admin $<span class="cursor"></span>

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { listProjectsAdmin, createProject, updateProject } from '../../api/projects'
 import type { ProjectPayload } from '../../api/projects'
 import AdminNav from '../../components/AdminNav.vue'
+import TerminalFeedback from '../../components/TerminalFeedback.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,6 +22,15 @@ const project = ref<ProjectPayload>({
 })
 const status = ref('')
 const saving = ref(false)
+const feedbackMsg = ref<string | null>(null)
+const feedbackType = ref<'ok' | 'err'>('ok')
+const feedbackTrigger = ref(0)
+
+function showFeedback(msg: string, type: 'ok' | 'err') {
+  feedbackMsg.value = msg
+  feedbackType.value = type
+  feedbackTrigger.value++
+}
 
 onMounted(async () => {
   if (isEdit) {
@@ -46,13 +56,16 @@ async function handleSave() {
     if (isEdit) {
       await updateProject(project.value.id, project.value)
       status.value = `SAVED: ${project.value.name}`
+      showFeedback(`${project.value.name} saved`, 'ok')
     } else {
       await createProject(project.value)
       status.value = `CREATED: ${project.value.name}`
+      showFeedback(`${project.value.name} created`, 'ok')
       router.push('/admin/projects')
     }
   } catch (e: any) {
     status.value = 'ERROR: ' + (e.message || 'save failed')
+    showFeedback(e.message || 'save failed', 'err')
   } finally {
     saving.value = false
   }
@@ -108,6 +121,13 @@ async function handleSave() {
     </button>
     <RouterLink to="/admin/projects" class="btn btn-sm">cd ..</RouterLink>
   </div>
+
+  <TerminalFeedback
+    :message="feedbackMsg"
+    :type="feedbackType"
+    :duration="feedbackType === 'err' ? 0 : 4000"
+    :trigger="feedbackTrigger"
+  />
 </template>
 
 <style scoped>

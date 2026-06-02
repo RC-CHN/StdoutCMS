@@ -2,6 +2,12 @@
    STDOUT_CMS_ELF — Terminal Brutalist Theme
    ============================================ */
 
+@font-face {
+  font-family: 'Zpix';
+  src: url('/zpix.woff2') format('truetype');
+  font-display: swap;
+}
+
 :root {
   --bg: #f4f4f4;
   --fg: #111111;
@@ -9,7 +15,7 @@
   --border: #111111;
   --shadow: 5px 5px 0px #111111;
   --grid-color: rgba(0, 0, 0, 0.05);
-  --font-main: 'Courier New', Courier, monospace;
+  --font-main: 'Zpix', 'Courier New', Courier, '宋体', monospace;
   --selection-bg: #111111;
   --selection-fg: #f4f4f4;
 }
@@ -100,11 +106,19 @@ button, .btn {
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: bold;
+  line-height: 1.4;
   cursor: url('/win-95-98/hand.cur'), pointer;
   transition: all 0.1s;
   text-transform: uppercase;
   text-decoration: none;
   display: inline-block;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+.btn-sm {
+  padding: 4px 12px;
+  font-size: 0.85rem;
 }
 
 button:active, .btn:active {
