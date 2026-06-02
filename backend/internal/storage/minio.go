@@ -50,6 +50,21 @@ func (s *S3) Delete(ctx context.Context, key string) error {
 	return s.client.RemoveObject(ctx, s.cfg.Bucket, key, minio.RemoveObjectOptions{})
 }
 
+// ListObjectKeys returns all object keys under the given prefix (recursive).
+func (s *S3) ListObjectKeys(ctx context.Context, prefix string) ([]string, error) {
+	var keys []string
+	for obj := range s.client.ListObjects(ctx, s.cfg.Bucket, minio.ListObjectsOptions{
+		Prefix:    prefix,
+		Recursive: true,
+	}) {
+		if obj.Err != nil {
+			return nil, fmt.Errorf("ListObjects: %w", obj.Err)
+		}
+		keys = append(keys, obj.Key)
+	}
+	return keys, nil
+}
+
 // GenerateKey returns an object key from a UUID and filename extension.
 func GenerateKey(uuid, ext string) string {
 	if ext == "" {

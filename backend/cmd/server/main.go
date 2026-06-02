@@ -1,17 +1,22 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"stdoutcms/internal/config"
 	"stdoutcms/internal/handler"
 	"stdoutcms/internal/middleware"
+	"stdoutcms/internal/scheduler"
 	"stdoutcms/internal/storage"
 	"stdoutcms/internal/store"
+	"stdoutcms/internal/task"
 )
 
 // defaultPath tries a few locations for the migration file.
@@ -125,6 +130,19 @@ func main() {
 			admin.POST("/ai/chat", handler.AdminChat(pg, rd, cfg))
 		}
 	}
+
+	// ---- Background scheduler ----
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	sched := scheduler.New(logger,
+		scheduler.Task{
+			Name:     "cleanup-orphan-images",
+			Interval: 24 * time.Hour,
+			Run:      task.CleanupOrphanImages(logger, pg, s3),
+		},
+	)
+	go sched.Start(ctx)
 
 	logger.Info("server starting", "port", cfg.AppPort)
 	if err := r.Run(":" + cfg.AppPort); err != nil {
