@@ -6,11 +6,14 @@ import TerminalFooter from './components/TerminalFooter.vue'
 import FileListing from './components/FileListing.vue'
 import ChatWidget from './components/ChatWidget.vue'
 import { fetchMeta } from './api/meta'
+import { listPosts } from './api/posts'
+import type { PostPayload } from './api/posts'
 
 const route = useRoute()
 
 const THEME_KEY = 'blog_theme_pref'
 const aiEnabled = ref(false)
+const sidebarPosts = ref<PostPayload[]>([])
 
 function initTheme() {
   const saved = localStorage.getItem(THEME_KEY)
@@ -24,6 +27,10 @@ onMounted(() => {
   fetchMeta()
     .then(m => { aiEnabled.value = m.ai })
     .catch(() => { aiEnabled.value = false })
+  // 拉取文章列表填充侧边栏（取较多条方便浏览）
+  listPosts(1, 50)
+    .then(data => { sidebarPosts.value = data.posts })
+    .catch(() => { sidebarPosts.value = [] })
 })
 
 /* 侧边栏 toggle */
@@ -67,7 +74,7 @@ const activeArticleSlug = computed(() =>
           <FileListing
             :directory="listingMode"
             :active-slug="activeArticleSlug"
-            :posts="[]"
+            :posts="sidebarPosts"
             @navigate="closeSidebar"
           />
         </div>
