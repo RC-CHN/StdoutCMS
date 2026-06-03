@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -328,4 +329,153 @@ func buildArticleContext(post *store.Post) string {
 		post.CreatedAt.Format("2006-01-02"),
 		content,
 	)
+}
+
+// ---- Meta generation (admin, non-streaming) ----
+
+// GenerateMetaRequest is the payload for AI-powered metadata generation.
+type GenerateMetaRequest struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
+// GenerateMetaResponse contains generated fields. A nil pointer means the
+// LLM failed to produce a valid value for that field.
+type GenerateMetaResponse struct {
+	Slug    *string `json:"slug"`
+	Tags    *string `json:"tags"`
+	Excerpt *string `json:"excerpt"`
+}
+
+// GenerateMeta returns a handler that uses the LLM to generate slug / tags /
+// excerpt from the post title and content.
+func GenerateMeta(cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req GenerateMetaRequest
+		if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Title) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
+			return
+		}
+
+		// truncate content to keep prompt size reasonable
+		content := req.Content
+		if len(content) > 3000 {
+			content = content[:3000] + "\n... (truncated)"
+		}
+
+		messages := []chatMessage{
+			{Role: "system", Content: metaSystemPrompt},
+			{Role: "user", Content: fmt.Sprintf("Title: %s\n\nContent:\n%s", req.Title, content)},
+		}
+
+		raw, err := callLLMNonStream(cfg, messages)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("llm call failed: %v", err)})
+			return
+		}
+
+		c.JSON(http.StatusOK, GenerateMetaResponse{
+			Slug:    extractTag(raw, "slug"),
+			Tags:    extractTag(raw, "tags"),
+			Excerpt: extractTag(raw, "excerpt"),
+		})
+	}
+}
+
+// metaSystemPrompt instructs the LLM to produce structured metadata output
+// wrapped in XML-style tags so we can parse it reliably.
+const metaSystemPrompt = `You are a blog post metadata generator. Given a title and markdown content, generate:
+
+- slug: a URL-friendly identifier (lowercase English, hyphens only, max 50 characters)
+- tags: 3-5 relevant keywords, comma-separated (e.g. "go, systems, terminal")
+- excerpt: a concise 1-2 sentence summary capturing the post's main point
+
+IMPORTANT — wrap your entire response in <content> tags. Each field MUST be inside its own XML tag.
+Output ONLY the following structure. No markdown, no explanations, no extra text:
+
+<content>
+<slug>example-post-slug</slug>
+<tags>tag1, tag2, tag3</tags>
+<excerpt>A brief summary of the post.</excerpt>
+</content>
+
+If you truly cannot determine a reasonable value for a field, include the tag but leave it empty.`
+
+// extractTag pulls the inner text of an XML-ish tag from the LLM response.
+// It first looks for a <content> wrapper, then extracts the requested tag
+// within it. Returns nil if the tag is missing or empty.
+func extractTag(raw, tag string) *string {
+	// try <content> wrapper first
+	contentRe := regexp.MustCompile(`<content[^>]*>\s*([\s\S]*?)\s*</content>`)
+	inner := raw
+	if m := contentRe.FindStringSubmatch(raw); len(m) >= 2 {
+		inner = m[1]
+	}
+
+	// extract requested tag inside the (possibly wrapped) text
+	tagRe := regexp.MustCompile(`<` + tag + `[^>]*>\s*([\s\S]*?)\s*</` + tag + `>`)
+	if m := tagRe.FindStringSubmatch(inner); len(m) >= 2 {
+		text := strings.TrimSpace(m[1])
+		if text != "" {
+			return &text
+		}
+	}
+	return nil
+}
+
+// ---- non-streaming LLM call ----
+
+// openAINonStreamResponse is the JSON shape returned by the chat/completions
+// endpoint when stream=false.
+type openAINonStreamResponse struct {
+	Choices []struct {
+		Message chatMessage `json:"message"`
+	} `json:"choices"`
+}
+
+// callLLMNonStream sends a single-turn request to the LLM and returns the
+// full response text. Used for metadata generation where we need the complete
+// result at once (not delta-by-delta).
+func callLLMNonStream(cfg *config.Config, messages []chatMessage) (string, error) {
+	body := openAIRequest{
+		Model:    cfg.LLM.Model,
+		Messages: messages,
+		Stream:   false,
+	}
+
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return "", err
+	}
+
+	url := strings.TrimRight(cfg.LLM.Endpoint, "/") + "/chat/completions"
+	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+cfg.LLM.APIKey)
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("llm returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result openAINonStreamResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("decode response: %w", err)
+	}
+
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("no choices in response")
+	}
+
+	return result.Choices[0].Message.Content, nil
 }

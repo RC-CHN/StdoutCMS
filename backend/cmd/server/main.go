@@ -136,9 +136,10 @@ func main() {
 		admin.PUT("/projects/:id", handler.UpdateProject(pg, rd))
 		admin.DELETE("/projects/:id", handler.DeleteProject(pg, rd))
 
-		// AI chat (admin) — only if LLM is configured
+		// AI features (admin) — only if LLM is configured
 		if cfg.LLM.IsEnabled() {
 			admin.POST("/ai/chat", handler.AdminChat(pg, rd, cfg))
+			admin.POST("/ai/generate-meta", handler.GenerateMeta(cfg))
 		}
 			admin.GET("/about", handler.GetAboutAdmin(pg))
 			admin.PUT("/about", handler.UpdateAbout(pg))

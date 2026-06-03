@@ -3,6 +3,8 @@ import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPostAdmin, createPost, updatePost } from '../../api/posts'
 import type { PostPayload } from '../../api/posts'
+import { generateMeta, type GenerateMetaRes } from '../../api/chat'
+import { fetchMeta } from '../../api/meta'
 import { useDraft } from '../../composables/useDraft'
 import { useImagePaste } from '../../composables/useImagePaste'
 import ArticleRenderer from '../../components/ArticleRenderer.vue'
@@ -33,6 +35,13 @@ const { attach, detach } = useImagePaste(() => textareaRef.value)
 
 onMounted(() => attach())
 onUnmounted(() => detach())
+
+// check AI availability
+onMounted(() => {
+  fetchMeta()
+    .then(m => { aiEnabled.value = m.ai })
+    .catch(() => { aiEnabled.value = false })
+})
 
 // load existing post from API
 onMounted(async () => {
@@ -74,13 +83,60 @@ const previewContent = computed(() => draft.value.content)
 type ViewMode = 'split' | 'edit' | 'preview'
 const viewMode = ref<ViewMode>('split')
 
-function generateSlug() {
-  const base = draft.value.title
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .slice(0, 50)
-  draft.value.slug = base || 'untitled'
+// ---- AI meta generation ----
+
+const aiEnabled = ref(false)
+const metaCache = ref<GenerateMetaRes | null>(null)
+const generatingField = ref<'slug' | 'tags' | 'excerpt' | null>(null)
+
+// clear cache when title or content changes (user is writing a different post)
+watch(
+  () => [draft.value.title, draft.value.content],
+  () => { metaCache.value = null },
+)
+
+async function generateField(field: 'slug' | 'tags' | 'excerpt') {
+  if (generatingField.value) return // already generating
+
+  // use cached result if available
+  if (metaCache.value) {
+    applyMetaField(field, metaCache.value)
+    return
+  }
+
+  generatingField.value = field
+  status.value = `AI generating ${field}...`
+
+  try {
+    const res = await generateMeta({ title: draft.value.title, content: draft.value.content })
+    metaCache.value = res
+    applyMetaField(field, res)
+    status.value = `AI: ${field} generated`
+  } catch (e: any) {
+    metaCache.value = null
+    applyMetaFail(field)
+    status.value = 'ERROR: ' + (e.message || 'meta generation failed')
+  } finally {
+    generatingField.value = null
+  }
+}
+
+function applyMetaField(field: 'slug' | 'tags' | 'excerpt', res: GenerateMetaRes) {
+  const val = res[field]
+  if (val && val.trim()) {
+    if (field === 'slug') draft.value.slug = val
+    else if (field === 'tags') draft.value.tags = val
+    else if (field === 'excerpt') draft.value.excerpt = val
+  } else {
+    applyMetaFail(field)
+  }
+}
+
+function applyMetaFail(field: 'slug' | 'tags' | 'excerpt') {
+  const placeholder = '[FAILED - click retry]'
+  if (field === 'slug') draft.value.slug = placeholder
+  else if (field === 'tags') draft.value.tags = placeholder
+  else if (field === 'excerpt') draft.value.excerpt = placeholder
 }
 
 async function handlePublish() {
@@ -166,20 +222,37 @@ function statusClass() {
   <div class="meta-panel">
     <div class="meta-row">
       <label>TITLE:</label>
-      <input v-model="draft.title" type="text" placeholder="article title..." @blur="generateSlug" />
+      <input v-model="draft.title" type="text" placeholder="article title..." />
     </div>
     <div class="meta-row">
       <label>SLUG:</label>
       <input v-model="draft.slug" type="text" placeholder="url-slug" />
-      <button class="btn btn-sm" @click="generateSlug">AUTO_GEN</button>
+      <button
+        v-if="aiEnabled"
+        class="btn btn-sm"
+        :disabled="!!generatingField"
+        @click="generateField('slug')"
+      >GEN_SLUG</button>
     </div>
     <div class="meta-row">
       <label>TAGS:</label>
       <input v-model="draft.tags" type="text" placeholder="tag1, tag2, tag3" />
+      <button
+        v-if="aiEnabled"
+        class="btn btn-sm"
+        :disabled="!!generatingField"
+        @click="generateField('tags')"
+      >GEN_TAGS</button>
     </div>
     <div class="meta-row">
       <label>EXCERPT:</label>
       <input v-model="draft.excerpt" type="text" placeholder="short summary..." />
+      <button
+        v-if="aiEnabled"
+        class="btn btn-sm"
+        :disabled="!!generatingField"
+        @click="generateField('excerpt')"
+      >GEN_EXCERPT</button>
     </div>
   </div>
 

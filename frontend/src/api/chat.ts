@@ -96,3 +96,21 @@ function getToken(): string {
   if (match) return match[1]
   return localStorage.getItem('blog_session_token') || ''
 }
+
+// ---- Meta generation (admin) ----
+
+export interface GenerateMetaReq {
+  title: string
+  content: string
+}
+
+export interface GenerateMetaRes {
+  slug: string | null
+  tags: string | null
+  excerpt: string | null
+}
+
+/** Calls the admin AI endpoint to generate slug / tags / excerpt from title + content. */
+export function generateMeta(body: GenerateMetaReq): Promise<GenerateMetaRes> {
+  return post<GenerateMetaRes>('/admin/ai/generate-meta', body)
+}
