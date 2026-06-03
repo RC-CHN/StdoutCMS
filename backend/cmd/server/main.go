@@ -111,8 +111,8 @@ func main() {
 	r.GET("/api/v1/posts", handler.ListPosts(pg, rd))
 	r.GET("/api/v1/posts/:slug", handler.GetPost(pg, rd))
 	r.GET("/api/v1/projects", handler.ListProjects(pg, rd))
-	r.GET("/api/v1/projects/:id", handler.GetProject(pg))
-	r.GET("/api/v1/about", handler.GetAbout(pg))
+	r.GET("/api/v1/projects/:id", handler.GetProject(pg, rd))
+	r.GET("/api/v1/about", handler.GetAbout(pg, rd))
 
 	// AI chat (public) — only if LLM is configured
 	if cfg.LLM.IsEnabled() {
@@ -142,7 +142,7 @@ func main() {
 			admin.POST("/ai/generate-meta", handler.GenerateMeta(cfg))
 		}
 			admin.GET("/about", handler.GetAboutAdmin(pg))
-			admin.PUT("/about", handler.UpdateAbout(pg))
+			admin.PUT("/about", handler.UpdateAbout(pg, rd))
 	}
 
 	// ---- Background scheduler ----

@@ -146,18 +146,27 @@ func ListProjects(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	}
 }
 
-func GetProject(pg *store.Postgres) gin.HandlerFunc {
+func GetProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 			return
 		}
+
+		cacheKey := fmt.Sprintf("projects:id:%d", id)
+		if cached, ok := rd.GetCache(cacheKey); ok {
+			c.Data(http.StatusOK, "application/json", cached)
+			return
+		}
+
 		project, err := pg.GetProject(id)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
 			return
 		}
+		body, _ := json.Marshal(project)
+		rd.SetCache(cacheKey, body, 10*time.Minute)
 		c.JSON(http.StatusOK, project)
 	}
 }
@@ -403,7 +412,7 @@ func GetAboutAdmin(pg *store.Postgres) gin.HandlerFunc {
 	}
 }
 
-func UpdateAbout(pg *store.Postgres) gin.HandlerFunc {
+func UpdateAbout(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var a store.About
 		if err := c.ShouldBindJSON(&a); err != nil {
@@ -414,19 +423,28 @@ func UpdateAbout(pg *store.Postgres) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		rd.InvalidateAbout()
 		c.JSON(http.StatusOK, gin.H{"status": "saved"})
 	}
 }
 
 // ---- Public About (no auth needed) ----
 
-func GetAbout(pg *store.Postgres) gin.HandlerFunc {
+func GetAbout(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		cacheKey := "about:page"
+		if cached, ok := rd.GetCache(cacheKey); ok {
+			c.Data(http.StatusOK, "application/json", cached)
+			return
+		}
+
 		a, err := pg.GetAbout()
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "about not found"})
 			return
 		}
+		body, _ := json.Marshal(a)
+		rd.SetCache(cacheKey, body, 1*time.Hour)
 		c.JSON(http.StatusOK, a)
 	}
 }

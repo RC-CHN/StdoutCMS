@@ -101,6 +101,14 @@ func (r *Redis) InvalidatePost(slug string) {
 func (r *Redis) InvalidateProjects() {
 	ctx := context.Background()
 	r.client.Del(ctx, "projects:list")
+	r.DeleteCachePattern("projects:id:*")
+}
+
+// ---- About ----
+
+func (r *Redis) InvalidateAbout() {
+	ctx := context.Background()
+	r.client.Del(ctx, "about:page")
 }
 
 // ---- Chat ----
