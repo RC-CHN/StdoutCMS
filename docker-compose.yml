@@ -57,7 +57,10 @@ services:
       "
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        GOPROXY: ${GOPROXY:-}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -89,7 +92,10 @@ services:
       LLM_SYSTEM_PROMPT: ${LLM_SYSTEM_PROMPT:-}
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
     restart: unless-stopped
     depends_on:
       - backend
