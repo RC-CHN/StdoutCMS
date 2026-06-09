@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime"
 	"path/filepath"
+	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -65,8 +67,22 @@ func (s *S3) ListObjectKeys(ctx context.Context, prefix string) ([]string, error
 	return keys, nil
 }
 
-// GenerateKey returns an object key from a UUID and filename extension.
-func GenerateKey(uuid, ext string) string {
+// GenerateKey returns an object key from a UUID and a content-type (e.g. "image/png")
+// or plain extension (e.g. ".jpg"). Falls back to ".bin" if neither is usable.
+func GenerateKey(uuid, contentType string) string {
+	ext := ""
+	// Try MIME type first (e.g. "image/png" → ".png")
+	if exts, err := mime.ExtensionsByType(contentType); err == nil && len(exts) > 0 {
+		ext = exts[0]
+	}
+	// Fallback: treat contentType as a plain extension
+	if ext == "" {
+		if strings.HasPrefix(contentType, ".") {
+			ext = contentType
+		} else if contentType != "" {
+			ext = "." + contentType
+		}
+	}
 	if ext == "" {
 		ext = ".bin"
 	}

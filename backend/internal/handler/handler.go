@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -22,6 +23,8 @@ import (
 
 // Version is set at build time via ldflags.
 var Version = "dev"
+
+var slugRegex = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 func Health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -254,6 +257,10 @@ func CreatePost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 		}
 		if po.Slug == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "slug is required"})
+			return
+		}
+		if !slugRegex.MatchString(po.Slug) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "slug must be lowercase alphanumeric with hyphens only"})
 			return
 		}
 		if err := pg.CreatePost(&po); err != nil {

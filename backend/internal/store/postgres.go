@@ -33,7 +33,7 @@ func NewPostgres(dsn string) (*Postgres, error) {
 func (p *Postgres) CountPosts() (int, error) {
 	ctx := context.Background()
 	var n int
-	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM postsWHERE published = true").Scan(&n)
+	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts WHERE published = true").Scan(&n)
 	return n, err
 }
 
