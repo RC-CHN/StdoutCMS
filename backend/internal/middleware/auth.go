@@ -33,7 +33,7 @@ func Auth(rd *store.Redis, cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		valid, err := rd.ValidateSession(token)
+		valid, err := rd.ValidateSession(c.Request.Context(), token)
 		if err != nil || !valid {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "session expired"})
 			return

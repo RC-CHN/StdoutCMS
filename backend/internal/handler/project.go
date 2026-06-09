@@ -16,26 +16,28 @@ import (
 
 func ListProjects(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		cacheKey := "projects:list"
-		if cached, ok := rd.GetCache(cacheKey); ok {
+		if cached, ok := rd.GetCache(ctx, cacheKey); ok {
 			c.Data(http.StatusOK, "application/json", cached)
 			return
 		}
 
-		projects, err := pg.ListProjects()
+		projects, err := pg.ListProjects(ctx)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		resp := gin.H{"projects": projects}
 		body, _ := json.Marshal(resp)
-		rd.SetCache(cacheKey, body, 10*time.Minute)
+		rd.SetCache(ctx, cacheKey, body, 10*time.Minute)
 		c.JSON(http.StatusOK, resp)
 	}
 }
 
 func GetProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
@@ -43,18 +45,18 @@ func GetProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 		}
 
 		cacheKey := fmt.Sprintf("projects:id:%d", id)
-		if cached, ok := rd.GetCache(cacheKey); ok {
+		if cached, ok := rd.GetCache(ctx, cacheKey); ok {
 			c.Data(http.StatusOK, "application/json", cached)
 			return
 		}
 
-		project, err := pg.GetProject(id)
+		project, err := pg.GetProject(ctx, id)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
 			return
 		}
 		body, _ := json.Marshal(project)
-		rd.SetCache(cacheKey, body, 10*time.Minute)
+		rd.SetCache(ctx, cacheKey, body, 10*time.Minute)
 		c.JSON(http.StatusOK, project)
 	}
 }
@@ -63,7 +65,8 @@ func GetProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 
 func ListProjectsAdmin(pg *store.Postgres) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		projects, err := pg.ListProjectsAdmin()
+		ctx := c.Request.Context()
+		projects, err := pg.ListProjectsAdmin(ctx)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -74,22 +77,24 @@ func ListProjectsAdmin(pg *store.Postgres) gin.HandlerFunc {
 
 func CreateProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var pr store.Project
 		if err := c.ShouldBindJSON(&pr); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if err := pg.CreateProject(&pr); err != nil {
+		if err := pg.CreateProject(ctx, &pr); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		rd.InvalidateProjects()
+		rd.InvalidateProjects(ctx)
 		c.JSON(http.StatusCreated, gin.H{"status": "created"})
 	}
 }
 
 func UpdateProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
@@ -100,27 +105,28 @@ func UpdateProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if err := pg.UpdateProject(id, &pr); err != nil {
+		if err := pg.UpdateProject(ctx, id, &pr); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		rd.InvalidateProjects()
+		rd.InvalidateProjects(ctx)
 		c.JSON(http.StatusOK, gin.H{"status": "updated"})
 	}
 }
 
 func DeleteProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 			return
 		}
-		if err := pg.DeleteProject(id); err != nil {
+		if err := pg.DeleteProject(ctx, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		rd.InvalidateProjects()
+		rd.InvalidateProjects(ctx)
 		c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 	}
 }

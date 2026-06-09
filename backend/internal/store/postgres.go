@@ -30,15 +30,13 @@ func NewPostgres(dsn string) (*Postgres, error) {
 
 // ---- Stats ----
 
-func (p *Postgres) CountPosts() (int, error) {
-	ctx := context.Background()
+func (p *Postgres) CountPosts(ctx context.Context) (int, error) {
 	var n int
 	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts WHERE published = true").Scan(&n)
 	return n, err
 }
 
-func (p *Postgres) CountProjects() (int, error) {
-	ctx := context.Background()
+func (p *Postgres) CountProjects(ctx context.Context) (int, error) {
 	var n int
 	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM projects").Scan(&n)
 	return n, err
@@ -52,9 +50,7 @@ func (p *Postgres) Close() {
 
 // ---- Posts ----
 
-func (p *Postgres) ListPosts(page, size int) ([]Post, int, error) {
-	ctx := context.Background()
-
+func (p *Postgres) ListPosts(ctx context.Context, page, size int) ([]Post, int, error) {
 	var total int
 	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts WHERE published = true").Scan(&total)
 	if err != nil {
@@ -90,8 +86,7 @@ func (p *Postgres) ListPosts(page, size int) ([]Post, int, error) {
 	return posts, total, rows.Err()
 }
 
-func (p *Postgres) GetPostBySlug(slug string) (*Post, error) {
-	ctx := context.Background()
+func (p *Postgres) GetPostBySlug(ctx context.Context, slug string) (*Post, error) {
 	var po Post
 	err := p.pool.QueryRow(ctx, `
 		SELECT slug, title, content, excerpt, tags, author, word_count, read_time, created_at, updated_at
@@ -105,8 +100,7 @@ func (p *Postgres) GetPostBySlug(slug string) (*Post, error) {
 	return &po, nil
 }
 
-func (p *Postgres) GetPostBySlugAdmin(slug string) (*Post, error) {
-	ctx := context.Background()
+func (p *Postgres) GetPostBySlugAdmin(ctx context.Context, slug string) (*Post, error) {
 	var po Post
 	err := p.pool.QueryRow(ctx, `
 		SELECT slug, title, content, excerpt, tags, author, word_count, read_time, published, created_at, updated_at
@@ -120,9 +114,7 @@ func (p *Postgres) GetPostBySlugAdmin(slug string) (*Post, error) {
 	return &po, nil
 }
 
-func (p *Postgres) ListPostsAdmin(page, size int) ([]Post, int, error) {
-	ctx := context.Background()
-
+func (p *Postgres) ListPostsAdmin(ctx context.Context, page, size int) ([]Post, int, error) {
 	var total int
 	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts").Scan(&total)
 	if err != nil {
@@ -157,8 +149,7 @@ func (p *Postgres) ListPostsAdmin(page, size int) ([]Post, int, error) {
 	return posts, total, rows.Err()
 }
 
-func (p *Postgres) CreatePost(po *Post) error {
-	ctx := context.Background()
+func (p *Postgres) CreatePost(ctx context.Context, po *Post) error {
 	_, err := p.pool.Exec(ctx, `
 		INSERT INTO posts (slug, title, content, excerpt, tags, author, word_count, read_time, published)
 		VALUES ($1,$2,$3,$4,$5::text[],$6,$7,$8,$9)
@@ -166,8 +157,7 @@ func (p *Postgres) CreatePost(po *Post) error {
 	return err
 }
 
-func (p *Postgres) UpdatePost(slug string, po *Post) error {
-	ctx := context.Background()
+func (p *Postgres) UpdatePost(ctx context.Context, slug string, po *Post) error {
 	_, err := p.pool.Exec(ctx, `
 		UPDATE posts
 		SET title=$1, content=$2, excerpt=$3, tags=$4::text[], word_count=$5, read_time=$6, published=$7, updated_at=now()
@@ -176,16 +166,14 @@ func (p *Postgres) UpdatePost(slug string, po *Post) error {
 	return err
 }
 
-func (p *Postgres) DeletePost(slug string) error {
-	ctx := context.Background()
+func (p *Postgres) DeletePost(ctx context.Context, slug string) error {
 	_, err := p.pool.Exec(ctx, `DELETE FROM posts WHERE slug = $1`, slug)
 	return err
 }
 
 // ---- Projects ----
 
-func (p *Postgres) ListProjects() ([]Project, error) {
-	ctx := context.Background()
+func (p *Postgres) ListProjects(ctx context.Context) ([]Project, error) {
 	rows, err := p.pool.Query(ctx, `
 		SELECT id, name, description, lang, status, url, sort_order
 		FROM projects
@@ -211,12 +199,11 @@ func (p *Postgres) ListProjects() ([]Project, error) {
 }
 
 // ListProjectsAdmin returns all projects for the admin panel.
-func (p *Postgres) ListProjectsAdmin() ([]Project, error) {
-	return p.ListProjects()
+func (p *Postgres) ListProjectsAdmin(ctx context.Context) ([]Project, error) {
+	return p.ListProjects(ctx)
 }
 
-func (p *Postgres) GetProject(id int) (*Project, error) {
-	ctx := context.Background()
+func (p *Postgres) GetProject(ctx context.Context, id int) (*Project, error) {
 	var pr Project
 	err := p.pool.QueryRow(ctx, `
 		SELECT id, name, description, lang, status, url, sort_order
@@ -228,8 +215,7 @@ func (p *Postgres) GetProject(id int) (*Project, error) {
 	return &pr, nil
 }
 
-func (p *Postgres) CreateProject(pr *Project) error {
-	ctx := context.Background()
+func (p *Postgres) CreateProject(ctx context.Context, pr *Project) error {
 	_, err := p.pool.Exec(ctx, `
 		INSERT INTO projects (name, description, lang, status, url, sort_order)
 		VALUES ($1,$2,$3,$4,$5,$6)
@@ -237,8 +223,7 @@ func (p *Postgres) CreateProject(pr *Project) error {
 	return err
 }
 
-func (p *Postgres) UpdateProject(id int, pr *Project) error {
-	ctx := context.Background()
+func (p *Postgres) UpdateProject(ctx context.Context, id int, pr *Project) error {
 	_, err := p.pool.Exec(ctx, `
 		UPDATE projects SET name=$1, description=$2, lang=$3, status=$4, url=$5, sort_order=$6
 		WHERE id=$7
@@ -246,16 +231,14 @@ func (p *Postgres) UpdateProject(id int, pr *Project) error {
 	return err
 }
 
-func (p *Postgres) DeleteProject(id int) error {
-	ctx := context.Background()
+func (p *Postgres) DeleteProject(ctx context.Context, id int) error {
 	_, err := p.pool.Exec(ctx, `DELETE FROM projects WHERE id=$1`, id)
 	return err
 }
 
 // GetAllContent returns the content of every post (including drafts).
 // Used by orphan-image cleanup to check which images are still referenced.
-func (p *Postgres) GetAllContent() ([]string, error) {
-	ctx := context.Background()
+func (p *Postgres) GetAllContent(ctx context.Context) ([]string, error) {
 	rows, err := p.pool.Query(ctx, `SELECT content FROM posts`)
 	if err != nil {
 		return nil, err
@@ -275,8 +258,7 @@ func (p *Postgres) GetAllContent() ([]string, error) {
 
 // ---- Admin ----
 
-func (p *Postgres) GetAdminByUsername(username string) (*Admin, error) {
-	ctx := context.Background()
+func (p *Postgres) GetAdminByUsername(ctx context.Context, username string) (*Admin, error) {
 	var a Admin
 	err := p.pool.QueryRow(ctx, `
 		SELECT id, username, password_hash FROM admins WHERE username = $1
@@ -287,8 +269,7 @@ func (p *Postgres) GetAdminByUsername(username string) (*Admin, error) {
 	return &a, nil
 }
 
-func (p *Postgres) SeedAdmin(username, passwordHash string) error {
-	ctx := context.Background()
+func (p *Postgres) SeedAdmin(ctx context.Context, username, passwordHash string) error {
 	_, err := p.pool.Exec(ctx, `
 		INSERT INTO admins (username, password_hash)
 		VALUES ($1, $2)
@@ -298,8 +279,7 @@ func (p *Postgres) SeedAdmin(username, passwordHash string) error {
 }
 
 // ExecMigration runs SQL only if the posts table doesn't exist yet.
-func (p *Postgres) ExecMigration(sql string) error {
-	ctx := context.Background()
+func (p *Postgres) ExecMigration(ctx context.Context, sql string) error {
 	var exists bool
 	err := p.pool.QueryRow(ctx, `
 		SELECT EXISTS (
@@ -318,16 +298,14 @@ func (p *Postgres) ExecMigration(sql string) error {
 }
 
 // ExecRaw runs SQL unconditionally (used for subsequent migrations).
-func (p *Postgres) ExecRaw(sql string) error {
-	ctx := context.Background()
+func (p *Postgres) ExecRaw(ctx context.Context, sql string) error {
 	_, err := p.pool.Exec(ctx, sql)
 	return err
 }
 
 // ---- About ----
 
-func (p *Postgres) GetAbout() (*About, error) {
-	ctx := context.Background()
+func (p *Postgres) GetAbout(ctx context.Context) (*About, error) {
 	var a About
 	err := p.pool.QueryRow(ctx, `
 		SELECT title, content, updated_at FROM about ORDER BY id LIMIT 1
@@ -338,8 +316,7 @@ func (p *Postgres) GetAbout() (*About, error) {
 	return &a, nil
 }
 
-func (p *Postgres) UpdateAbout(title, content string) error {
-	ctx := context.Background()
+func (p *Postgres) UpdateAbout(ctx context.Context, title, content string) error {
 	_, err := p.pool.Exec(ctx, `
 		INSERT INTO about (id, title, content, updated_at)
 		VALUES (1, $1, $2, now())

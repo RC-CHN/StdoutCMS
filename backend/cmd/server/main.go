@@ -54,7 +54,7 @@ func main() {
 		logger.Error("failed to read migration file", "error", err)
 		os.Exit(1)
 	}
-	if err := pg.ExecMigration(string(sql)); err != nil {
+	if err := pg.ExecMigration(context.Background(), string(sql)); err != nil {
 		logger.Error("failed to run migration", "error", err)
 		os.Exit(1)
 	}
@@ -63,7 +63,7 @@ func main() {
 	// migration 002 — standalone about table
 	m2Path := filepath.Join(filepath.Dir(migrationPath), "002_about.sql")
 	if m2, err := os.ReadFile(m2Path); err == nil {
-		if err := pg.ExecRaw(string(m2)); err != nil {
+		if err := pg.ExecRaw(context.Background(), string(m2)); err != nil {
 			logger.Error("failed to run migration 002", "error", err)
 			os.Exit(1)
 		}
@@ -87,7 +87,7 @@ func main() {
 	adminUser := os.Getenv("ADMIN_USERNAME")
 	adminPass := os.Getenv("ADMIN_PASSWORD")
 	if adminUser != "" && adminPass != "" {
-		if err := handler.SeedAdmin(pg, adminUser, adminPass); err != nil {
+		if err := handler.SeedAdmin(context.Background(), pg, adminUser, adminPass); err != nil {
 			logger.Error("failed to seed admin", "error", err)
 			os.Exit(1)
 		}

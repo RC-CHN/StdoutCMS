@@ -31,13 +31,13 @@ func (r *Redis) Close() error {
 	return r.client.Close()
 }
 
-func (r *Redis) SetSession(token string, username string, ttl int) error {
-	ctx := context.Background()
+// ---- Session ----
+
+func (r *Redis) SetSession(ctx context.Context, token string, username string, ttl int) error {
 	return r.client.Set(ctx, "session:"+token, username, time.Duration(ttl)*time.Second).Err()
 }
 
-func (r *Redis) ValidateSession(token string) (bool, error) {
-	ctx := context.Background()
+func (r *Redis) ValidateSession(ctx context.Context, token string) (bool, error) {
 	_, err := r.client.Get(ctx, "session:"+token).Result()
 	if err == redis.Nil {
 		return false, nil
@@ -48,15 +48,13 @@ func (r *Redis) ValidateSession(token string) (bool, error) {
 	return true, nil
 }
 
-func (r *Redis) DeleteSession(token string) error {
-	ctx := context.Background()
+func (r *Redis) DeleteSession(ctx context.Context, token string) error {
 	return r.client.Del(ctx, "session:"+token).Err()
 }
 
 // ---- Cache ----
 
-func (r *Redis) GetCache(key string) ([]byte, bool) {
-	ctx := context.Background()
+func (r *Redis) GetCache(ctx context.Context, key string) ([]byte, bool) {
 	b, err := r.client.Get(ctx, key).Bytes()
 	if err != nil {
 		return nil, false
@@ -64,13 +62,11 @@ func (r *Redis) GetCache(key string) ([]byte, bool) {
 	return b, true
 }
 
-func (r *Redis) SetCache(key string, data []byte, ttl time.Duration) {
-	ctx := context.Background()
+func (r *Redis) SetCache(ctx context.Context, key string, data []byte, ttl time.Duration) {
 	r.client.Set(ctx, key, data, ttl)
 }
 
-func (r *Redis) DeleteCachePattern(pattern string) error {
-	ctx := context.Background()
+func (r *Redis) DeleteCachePattern(ctx context.Context, pattern string) error {
 	var cursor uint64
 	for {
 		keys, next, err := r.client.Scan(ctx, cursor, pattern, 100).Result()
@@ -88,26 +84,21 @@ func (r *Redis) DeleteCachePattern(pattern string) error {
 	return nil
 }
 
-func (r *Redis) InvalidatePostList() {
-	r.DeleteCachePattern("posts:list:*")
+func (r *Redis) InvalidatePostList(ctx context.Context) {
+	_ = r.DeleteCachePattern(ctx, "posts:list:*")
 }
 
-func (r *Redis) InvalidatePost(slug string) {
-	ctx := context.Background()
+func (r *Redis) InvalidatePost(ctx context.Context, slug string) {
 	r.client.Del(ctx, "posts:slug:"+slug)
-	r.InvalidatePostList()
+	r.InvalidatePostList(ctx)
 }
 
-func (r *Redis) InvalidateProjects() {
-	ctx := context.Background()
+func (r *Redis) InvalidateProjects(ctx context.Context) {
 	r.client.Del(ctx, "projects:list")
-	r.DeleteCachePattern("projects:id:*")
+	_ = r.DeleteCachePattern(ctx, "projects:id:*")
 }
 
-// ---- About ----
-
-func (r *Redis) InvalidateAbout() {
-	ctx := context.Background()
+func (r *Redis) InvalidateAbout(ctx context.Context) {
 	r.client.Del(ctx, "about:page")
 }
 
@@ -117,8 +108,7 @@ const chatHistoryLimit = 20 // max rounds per session
 
 // ChatGetHistory returns chat messages from oldest to newest.
 // Each element is a JSON blob: {"role":"user","content":"..."}
-func (r *Redis) ChatGetHistory(sid string) ([]string, error) {
-	ctx := context.Background()
+func (r *Redis) ChatGetHistory(ctx context.Context, sid string) ([]string, error) {
 	key := "chat:session:" + sid
 	// LRANGE returns newest-first, we want oldest-first
 	items, err := r.client.LRange(ctx, key, 0, -1).Result()
@@ -136,8 +126,7 @@ func (r *Redis) ChatGetHistory(sid string) ([]string, error) {
 
 // ChatPushMessage pushes a JSON-encoded message onto the session list,
 // trims to chatHistoryLimit rounds (×2 messages), and refreshes TTL.
-func (r *Redis) ChatPushMessage(sid string, msg string, ttl time.Duration) error {
-	ctx := context.Background()
+func (r *Redis) ChatPushMessage(ctx context.Context, sid string, msg string, ttl time.Duration) error {
 	key := "chat:session:" + sid
 	pipe := r.client.Pipeline()
 	pipe.LPush(ctx, key, msg)
@@ -149,8 +138,7 @@ func (r *Redis) ChatPushMessage(sid string, msg string, ttl time.Duration) error
 
 // ChatDailyQuota increments today's global counter and returns (current, limit).
 // If the counter was just created, sets its TTL to the end of the day.
-func (r *Redis) ChatDailyQuota(limit int) (int64, bool) {
-	ctx := context.Background()
+func (r *Redis) ChatDailyQuota(ctx context.Context, limit int) (int64, bool) {
 	key := "chat:quota:daily"
 	n, err := r.client.Incr(ctx, key).Result()
 	if err != nil {
@@ -166,13 +154,11 @@ func (r *Redis) ChatDailyQuota(limit int) (int64, bool) {
 }
 
 // ChatGetLastCtx returns the article slug last injected for this session.
-func (r *Redis) ChatGetLastCtx(sid string) (string, error) {
-	ctx := context.Background()
+func (r *Redis) ChatGetLastCtx(ctx context.Context, sid string) (string, error) {
 	return r.client.Get(ctx, "chat:session:"+sid+":ctx").Result()
 }
 
 // ChatSetLastCtx records the current article slug for this session with the same TTL as the session.
-func (r *Redis) ChatSetLastCtx(sid string, slug string, ttl time.Duration) error {
-	ctx := context.Background()
+func (r *Redis) ChatSetLastCtx(ctx context.Context, sid string, slug string, ttl time.Duration) error {
 	return r.client.Set(ctx, "chat:session:"+sid+":ctx", slug, ttl).Err()
 }

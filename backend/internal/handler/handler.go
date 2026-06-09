@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -40,8 +41,9 @@ var startTime = time.Now()
 
 func Meta(pg *store.Postgres, llmEnabled bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		posts, _ := pg.CountPosts()
-		projects, _ := pg.CountProjects()
+		ctx := c.Request.Context()
+		posts, _ := pg.CountPosts(ctx)
+		projects, _ := pg.CountProjects(ctx)
 		c.JSON(http.StatusOK, MetaResponse{
 			App:       "STDOUT_CMS_ELF",
 			Version:   Version,
@@ -64,7 +66,7 @@ func generateToken() string {
 
 // SeedAdmin creates the default admin user if none exists.
 // Called once at startup from main.
-func SeedAdmin(pg *store.Postgres, username, password string) error {
+func SeedAdmin(ctx context.Context, pg *store.Postgres, username, password string) error {
 	if username == "" || password == "" {
 		return fmt.Errorf("ADMIN_USERNAME and ADMIN_PASSWORD must be set")
 	}
@@ -72,5 +74,5 @@ func SeedAdmin(pg *store.Postgres, username, password string) error {
 	if err != nil {
 		return err
 	}
-	return pg.SeedAdmin(username, string(hash))
+	return pg.SeedAdmin(ctx, username, string(hash))
 }

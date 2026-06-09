@@ -57,6 +57,7 @@ type openAIStreamChunk struct {
 
 func Chat(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var req ChatRequest
 		if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Q) == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "q is required"})
@@ -66,14 +67,14 @@ func Chat(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerFu
 			c.JSON(http.StatusBadRequest, gin.H{"error": "q too long, max 500 chars"})
 			return
 		}
-		if _, ok := rd.ChatDailyQuota(cfg.LLM.DailyLimit); !ok {
+		if _, ok := rd.ChatDailyQuota(ctx, cfg.LLM.DailyLimit); !ok {
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "daily quota exceeded"})
 			return
 		}
 
 		var post *store.Post
 		if req.Ctx != "" {
-			p, err := pg.GetPostBySlug(req.Ctx)
+			p, err := pg.GetPostBySlug(ctx, req.Ctx)
 			if err == nil && p != nil {
 				post = p
 			}
@@ -87,6 +88,7 @@ func Chat(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerFu
 
 func AdminChat(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var req ChatRequest
 		if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Q) == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "q is required"})
@@ -99,7 +101,7 @@ func AdminChat(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.Hand
 
 		var post *store.Post
 		if req.Ctx != "" {
-			p, err := pg.GetPostBySlug(req.Ctx)
+			p, err := pg.GetPostBySlug(ctx, req.Ctx)
 			if err == nil && p != nil {
 				post = p
 			}
@@ -112,6 +114,7 @@ func AdminChat(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.Hand
 // ---- core stream handler ----
 
 func handleChatStream(c *gin.Context, rd *store.Redis, cfg *config.Config, sid, q string, post *store.Post) {
+	ctx := c.Request.Context()
 	// ensure sid
 	isNewSession := sid == ""
 	if isNewSession {
@@ -119,7 +122,7 @@ func handleChatStream(c *gin.Context, rd *store.Redis, cfg *config.Config, sid, 
 	}
 
 	// load history
-	history, err := rd.ChatGetHistory(sid)
+	history, err := rd.ChatGetHistory(ctx, sid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("redis read: %v", err)})
 		return
@@ -134,7 +137,7 @@ func handleChatStream(c *gin.Context, rd *store.Redis, cfg *config.Config, sid, 
 	if isNewSession {
 		ctxChanged = post != nil
 	} else if post != nil {
-		lastCtx, _ := rd.ChatGetLastCtx(sid)
+		lastCtx, _ := rd.ChatGetLastCtx(ctx, sid)
 		if lastCtx != currentCtx {
 			ctxChanged = true
 		}
@@ -153,7 +156,7 @@ func handleChatStream(c *gin.Context, rd *store.Redis, cfg *config.Config, sid, 
 			chatMessage{Role: "user", Content: buildArticleContext(post)},
 			chatMessage{Role: "assistant", Content: "已了解文章内容，请问。"},
 		)
-		_ = rd.ChatSetLastCtx(sid, currentCtx, time.Hour)
+		_ = rd.ChatSetLastCtx(ctx, sid, currentCtx, time.Hour)
 	}
 
 	for _, raw := range history {
@@ -187,8 +190,8 @@ func handleChatStream(c *gin.Context, rd *store.Redis, cfg *config.Config, sid, 
 	// persist user + assistant to Redis
 	userJSON, _ := json.Marshal(userMsg)
 	assistantJSON, _ := json.Marshal(chatMessage{Role: "assistant", Content: fullText})
-	_ = rd.ChatPushMessage(sid, string(userJSON), time.Hour)
-	_ = rd.ChatPushMessage(sid, string(assistantJSON), time.Hour)
+	_ = rd.ChatPushMessage(ctx, sid, string(userJSON), time.Hour)
+	_ = rd.ChatPushMessage(ctx, sid, string(assistantJSON), time.Hour)
 }
 
 // ---- helpers ----

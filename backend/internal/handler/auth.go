@@ -12,6 +12,7 @@ import (
 
 func Login(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var req struct {
 			Username string `json:"username" binding:"required"`
 			Password string `json:"password" binding:"required"`
@@ -21,7 +22,7 @@ func Login(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerF
 			return
 		}
 
-		admin, err := pg.GetAdminByUsername(req.Username)
+		admin, err := pg.GetAdminByUsername(ctx, req.Username)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 			return
@@ -33,7 +34,7 @@ func Login(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerF
 		}
 
 		token := generateToken()
-		rd.SetSession(token, req.Username, cfg.SessionMaxAge)
+		rd.SetSession(ctx, token, req.Username, cfg.SessionMaxAge)
 
 		secure := cfg.AppEnv == "production"
 		c.SetCookie("blog_session_token", token, cfg.SessionMaxAge, "/", "", secure, true)
@@ -43,9 +44,10 @@ func Login(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerF
 
 func Logout(rd *store.Redis, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		token, _ := c.Get("session_token")
 		if t, ok := token.(string); ok {
-			rd.DeleteSession(t)
+			rd.DeleteSession(ctx, t)
 		}
 		c.SetCookie("blog_session_token", "", -1, "/", "", false, true)
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})

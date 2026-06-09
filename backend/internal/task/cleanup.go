@@ -26,7 +26,7 @@ func CleanupOrphanImages(logger *slog.Logger, pg *store.Postgres, s3 *storage.S3
 		}
 
 		// 2. Get all post content
-		contents, err := pg.GetAllContent()
+		contents, err := pg.GetAllContent(ctx)
 		if err != nil {
 			return fmt.Errorf("get all content: %w", err)
 		}
