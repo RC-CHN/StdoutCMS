@@ -36,7 +36,10 @@ func Login(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerF
 		token := generateToken()
 		rd.SetSession(ctx, token, req.Username, cfg.SessionMaxAge)
 
-		secure := cfg.AppEnv == "production"
+		// Respect X-Forwarded-Proto from Nginx for cookie Secure flag.
+		// When Nginx terminates TLS, it sets X-Forwarded-Proto=https.
+		proto := c.GetHeader("X-Forwarded-Proto")
+		secure := proto == "https"
 		c.SetCookie("blog_session_token", token, cfg.SessionMaxAge, "/", "", secure, true)
 		c.JSON(http.StatusOK, gin.H{"token": token})
 	}

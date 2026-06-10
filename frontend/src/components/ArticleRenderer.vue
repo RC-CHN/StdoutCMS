@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { parseMarkdown } from '../utils/md'
 
 const props = defineProps<{
@@ -35,6 +35,176 @@ function onClick(e: MouseEvent) {
 
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+
+// ---- custom media player ----
+
+function fmtTime(s: number): string {
+  if (!isFinite(s)) return '--:--'
+  const m = Math.floor(s / 60)
+  const sec = Math.floor(s % 60)
+  return `${m}:${sec.toString().padStart(2, '0')}`
+}
+
+function initPlayers(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>('.md-media[data-player]').forEach(player => {
+    if ((player as any).__inited) return
+    ;(player as any).__inited = true
+
+    const src = player.querySelector<HTMLMediaElement>('.md-player-src')
+    const btn = player.querySelector<HTMLElement>('[data-play]')
+    const track = player.querySelector<HTMLElement>('[data-seek]')
+    const bar = track?.querySelector<HTMLElement>('.md-player-progress')
+    const timeEl = player.querySelector<HTMLElement>('.md-player-time')
+    const muteLabel = player.querySelector<HTMLElement>('[data-mute]')
+
+    if (!src || !btn || !track || !bar || !timeEl || !muteLabel) return
+
+    let duration = NaN
+    let lastVol = 1
+
+    src.addEventListener('loadedmetadata', () => {
+      duration = src.duration
+      timeEl.textContent = `0:00 / ${fmtTime(duration)}`
+      muteLabel.textContent = `VOL: ${Math.round(src.volume * 100)}%`
+    })
+
+    src.addEventListener('timeupdate', () => {
+      if (!isNaN(duration) && duration > 0) {
+        bar.style.width = (src.currentTime / duration * 100) + '%'
+      }
+      timeEl.textContent = `${fmtTime(src.currentTime)} / ${fmtTime(duration)}`
+    })
+
+    src.addEventListener('ended', () => {
+      btn.textContent = 'PLAY'
+      bar.style.width = '0%'
+    })
+
+    src.addEventListener('play', () => { btn.textContent = 'PAUSE' })
+    src.addEventListener('pause', () => { btn.textContent = 'PLAY' })
+
+    src.addEventListener('volumechange', () => {
+      muteLabel.textContent = src.muted ? 'MUTE' : `VOL: ${Math.round(src.volume * 100)}%`
+    })
+
+    btn.addEventListener('click', () => {
+      if (src.paused) src.play()
+      else src.pause()
+    })
+
+    // ---- seek drag ----
+    let seeking = false
+    track!.addEventListener('mousedown', (e) => {
+      seeking = true
+      const rect = track!.getBoundingClientRect()
+      src.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * duration
+
+      const onMove = (e: MouseEvent) => {
+        if (!seeking) return
+        const rect = track!.getBoundingClientRect()
+        src.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * duration
+      }
+      const onUp = () => { seeking = false; cleanup() }
+      const cleanup = () => {
+        document.removeEventListener('mousemove', onMove)
+        document.removeEventListener('mouseup', onUp)
+      }
+      document.addEventListener('mousemove', onMove)
+      document.addEventListener('mouseup', onUp)
+    })
+
+    // click fallback
+    track!.addEventListener('click', (e) => {
+      if (isNaN(duration)) return
+      const rect = track!.getBoundingClientRect()
+      src.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * duration
+    })
+
+    // ---- mute toggle ----
+    muteLabel.addEventListener('click', () => {
+      if (src.muted) { src.muted = false; src.volume = lastVol || 0.5 }
+      else { lastVol = src.volume; src.muted = true }
+    })
+
+    // ---- fullscreen toggle (video only) —— fullscreen the <video> natively
+    const fsBtn = player.querySelector<HTMLElement>('[data-fullscreen]')
+    if (fsBtn) {
+      fsBtn.addEventListener('click', () => {
+        if (document.fullscreenElement) {
+          document.exitFullscreen()
+        } else if (src instanceof HTMLVideoElement) {
+          src.requestFullscreen()
+        }
+      })
+    }
+  })
+}
+
+// ---- collapsible media ----
+
+function initCollapsibles(root: HTMLElement) {
+  // toggle buttons: [+] REVEAL / [-] HIDE
+  root.querySelectorAll<HTMLElement>('.md-toggle-btn').forEach(btn => {
+    if ((btn as any).__toggleInited) return
+    ;(btn as any).__toggleInited = true
+
+    btn.addEventListener('click', () => {
+      const fig = btn.closest('.md-media') as HTMLElement | null
+      if (!fig) return
+      fig.classList.toggle('is-expanded')
+      btn.textContent = fig.classList.contains('is-expanded') ? '[-] HIDE' : '[+] REVEAL'
+    })
+  })
+
+  // images: read dimensions and update DIM span
+  root.querySelectorAll<HTMLElement>('.md-image img').forEach(img => {
+    const imgEl = img as HTMLImageElement
+    const dims = img.closest('.md-image')?.querySelector('.md-img-dims')
+    if (!dims) return
+    const set = () => { dims.textContent = `DIM: ${imgEl.naturalWidth}x${imgEl.naturalHeight}` }
+    if (imgEl.complete && imgEl.naturalWidth) set()
+    else imgEl.addEventListener('load', set, { once: true })
+  })
+
+  // audio: update format + duration + STATUS in meta bar
+  root.querySelectorAll<HTMLElement>('.md-audio .md-player-src').forEach(el => {
+    const audio = el as HTMLMediaElement
+    const info = el.closest('.md-audio')?.querySelector('.md-audio-info')
+    const status = el.closest('.md-audio')?.querySelector('.md-status')
+    if (!status) return
+
+    audio.addEventListener('loadedmetadata', () => {
+      if (info) {
+        const ext = (audio.src.split('.').pop() || '').toUpperCase()
+        info.textContent = `${ext} · ${fmtTime(audio.duration)}`
+      }
+    }, { once: true })
+
+    audio.addEventListener('play',  () => { status.textContent = 'STATUS: PLAYING' })
+    audio.addEventListener('pause', () => { status.textContent = 'STATUS: PAUSED' })
+    audio.addEventListener('ended', () => { status.textContent = 'STATUS: DONE' })
+  })
+
+  // video: update RES when metadata loads
+  root.querySelectorAll<HTMLElement>('.md-video .md-player-src').forEach(el => {
+    const video = el as HTMLVideoElement
+    const res = el.closest('.md-video')?.querySelector('.md-res')
+    if (!res) return
+    video.addEventListener('loadedmetadata', () => {
+      res.textContent = `RES: ${video.videoWidth}x${video.videoHeight}`
+    }, { once: true })
+  })
+}
+
+watch(html, () => nextTick(() => {
+  const el = document.querySelector('.article-content') as HTMLElement | null
+  if (el) { initPlayers(el); initCollapsibles(el) }
+}))
+
+onMounted(() => nextTick(() => {
+  const el = document.querySelector('.article-content') as HTMLElement | null
+  if (el) { initPlayers(el); initCollapsibles(el) }
+}))
 </script>
 
 <template>
@@ -150,7 +320,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   color: var(--fg);
 }
 
-.article-content :deep(.md-image) {
+/* ---- brutalist media components ---- */
+
+.article-content :deep(.md-media) {
   display: block;
   margin: 2rem auto;
   max-width: 80%;
@@ -159,29 +331,245 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   background: var(--bg);
 }
 
-.article-content :deep(.md-image-bar) {
-  border-bottom: 2px dashed var(--border);
-  padding: 5px 10px;
-  font-size: 0.8rem;
-  color: var(--muted);
+/* meta bar: inverse fg/bg — brutalist header */
+.article-content :deep(.md-media-meta) {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid var(--border);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
   font-weight: bold;
+  background: var(--fg);
+  color: var(--bg);
   text-transform: uppercase;
+  font-family: var(--font-main);
+}
+
+.article-content :deep(.md-meta-info) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* toggle button: [+] REVEAL / [-] HIDE */
+.article-content :deep(.md-toggle-btn) {
+  appearance: none;
+  flex-shrink: 0;
+  margin-left: 0.75rem;
+  border: 2px solid var(--bg);
+  background: transparent;
+  color: var(--bg);
+  font-family: var(--font-main);
+  font-weight: bold;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  cursor: url('/win-95-98/hand.cur'), pointer;
+}
+
+.article-content :deep(.md-toggle-btn:hover) {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* audio: filename + info (inverse bar) */
+.article-content :deep(.md-audio-name) {
+  color: var(--bg);
+  text-transform: none;
+}
+
+.article-content :deep(.md-audio-info) {
+  color: var(--bg);
+  opacity: 0.7;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.article-content :deep(.md-status) {
+  color: var(--bg);
+  opacity: 0.7;
+  font-size: 0.7rem;
+}
+
+/* ---- image (collapsible) ---- */
+
+.article-content :deep(.md-image) {
+  max-width: 300px;
+}
+
+.article-content :deep(.md-image.is-expanded) {
+  max-width: 80%;
+}
+
+.article-content :deep(.md-image-body) {
+  display: block;
 }
 
 .article-content :deep(.md-image img) {
   display: block;
-  max-width: 100%;
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.2);
+}
+
+.article-content :deep(.md-image.is-expanded img) {
+  height: auto;
+}
+
+.article-content :deep(.md-image.is-expanded img),
+.article-content :deep(.md-image img:hover) {
+  filter: none;
+}
+
+.article-content :deep(.md-image-caption) {
+  display: none;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.8rem;
+  border-top: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-main);
+}
+
+.article-content :deep(.md-image.is-expanded .md-image-caption) {
+  display: block;
+}
+
+/* ---- foldable content (audio / video) ---- */
+
+.article-content :deep(.md-foldable-content) {
+  display: none;
+}
+
+.article-content :deep(.md-media.is-expanded .md-foldable-content) {
+  display: block;
+}
+
+/* ---- file download ---- */
+
+.article-content :deep(.md-file-link) {
+  display: block;
+  text-decoration: none;
+  color: var(--fg);
+}
+
+.article-content :deep(.md-file-link:hover) {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.article-content :deep(.md-file-link:hover .md-media-meta) {
+  border-bottom-color: var(--bg);
+}
+
+.article-content :deep(.md-file-body) {
+  padding: 1.5rem;
+  font-family: var(--font-main);
+}
+
+.article-content :deep(.md-file-name) {
+  font-size: 1.8rem;
+  font-weight: 900;
+  margin: 0 0 0.8rem 0;
+  word-break: break-all;
+  line-height: 1;
+}
+
+/* ---- player controls ---- */
+
+.article-content :deep(.md-player-src) {
+  display: none;  /* hidden — controlled via custom UI */
+}
+
+.article-content :deep(.md-video .md-player-src) {
+  display: block;
+  width: 100%;
   height: auto;
   filter: grayscale(1);
-  transition: filter 0.3s;
 }
 
-.article-content :deep(.md-image img:hover) {
-  filter: grayscale(0);
+.article-content :deep(.md-video .md-player-src:hover),
+.article-content :deep(.md-video.is-expanded .md-player-src) {
+  filter: none;
 }
 
-.article-content :deep(.md-image img) {
+.article-content :deep(.md-player-controls) {
+  display: flex;
+  border-top: 2px solid var(--border);
+}
+
+/* button: hard cut, no transition */
+.article-content :deep(.md-player-btn) {
+  appearance: none;
+  flex-shrink: 0;
+  background: var(--bg);
+  color: var(--fg);
+  border: none;
+  border-right: 2px solid var(--border);
+  font-family: var(--font-main);
+  font-weight: bold;
+  font-size: 0.75rem;
+  padding: 0.6rem 0.8rem;
   cursor: url('/win-95-98/hand.cur'), pointer;
+  text-transform: uppercase;
+  text-align: center;
+  min-width: 60px;
+}
+
+.article-content :deep(.md-player-btn:hover) {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.article-content :deep(.md-player-btn:active) {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* volume button: fixed width so VOL:100% ↔ MUTE doesn't jitter */
+.article-content :deep(.md-player-btn[data-mute]) {
+  width: 90px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* fullscreen button: last in row, no right border */
+.article-content :deep(.md-player-btn[data-fullscreen]) {
+  border-right: none;
+  min-width: 44px;
+  width: 44px;
+}
+
+/* progress / volume track */
+.article-content :deep(.md-player-track) {
+  flex-grow: 1;
+  position: relative;
+  cursor: ew-resize;
+  background: var(--bg);
+  border-right: 2px solid var(--border);
+  height: auto;
+  min-height: 40px;
+}
+
+.article-content :deep(.md-player-progress) {
+  height: 100%;
+  width: 0%;
+  background: var(--fg);
+  border-right: 2px solid var(--border);
+}
+
+/* time display */
+.article-content :deep(.md-player-time) {
+  flex-shrink: 0;
+  padding: 0.6rem 0.8rem;
+  font-weight: bold;
+  font-size: 0.75rem;
+  font-family: var(--font-main);
+  border-left: 2px solid var(--border);
+  border-right: 2px solid var(--border);
+  min-width: 120px;
+  text-align: center;
 }
 
 /* ---- lightbox ---- */

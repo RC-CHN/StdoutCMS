@@ -7,6 +7,7 @@ import { generateMeta, type GenerateMetaRes } from '../../api/chat'
 import { fetchMeta } from '../../api/meta'
 import { useDraft } from '../../composables/useDraft'
 import { useImagePaste } from '../../composables/useImagePaste'
+import { useEditorToolbar } from '../../composables/useEditorToolbar'
 import ArticleRenderer from '../../components/ArticleRenderer.vue'
 import AdminNav from '../../components/AdminNav.vue'
 import TerminalFeedback from '../../components/TerminalFeedback.vue'
@@ -32,6 +33,9 @@ function showFeedback(msg: string, type: 'ok' | 'err') {
 // image paste upload
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const { attach, detach } = useImagePaste(() => textareaRef.value)
+
+// editor toolbar (markdown formatting + multi-kind media upload)
+const toolbar = useEditorToolbar(() => textareaRef.value)
 
 onMounted(() => attach())
 onUnmounted(() => detach())
@@ -279,7 +283,36 @@ function statusClass() {
   <div class="editor-area" :class="`mode-${viewMode}`">
     <!-- 编辑面板 -->
     <div class="editor-pane" v-show="viewMode !== 'preview'">
-      <div class="pane-label">RAW // MARKDOWN</div>
+      <div class="editor-toolbar">
+        <span class="toolbar-label">RAW // MARKDOWN</span>
+        <div class="toolbar-actions">
+          <button
+            title="Upload image"
+            @click="toolbar.uploadMedia('image')"
+            :disabled="toolbar.uploading.value"
+            :class="{ 'toolbar-uploading': toolbar.uploadKind.value === 'image' }"
+          >{{ toolbar.uploadKind.value === 'image' ? '...' : '&#x25FB;' }}</button>
+          <button
+            title="Upload audio"
+            @click="toolbar.uploadMedia('audio')"
+            :disabled="toolbar.uploading.value"
+            :class="{ 'toolbar-uploading': toolbar.uploadKind.value === 'audio' }"
+          >{{ toolbar.uploadKind.value === 'audio' ? '...' : '&#x266B;' }}</button>
+          <button
+            title="Upload video"
+            @click="toolbar.uploadMedia('video')"
+            :disabled="toolbar.uploading.value"
+            :class="{ 'toolbar-uploading': toolbar.uploadKind.value === 'video' }"
+          >{{ toolbar.uploadKind.value === 'video' ? '...' : '&#x25B6;' }}</button>
+          <button
+            title="Upload file (download)"
+            @click="toolbar.uploadMedia('file')"
+            :disabled="toolbar.uploading.value"
+            :class="{ 'toolbar-uploading': toolbar.uploadKind.value === 'file' }"
+          >{{ toolbar.uploadKind.value === 'file' ? '...' : '&#x21E9;' }}</button>
+
+        </div>
+      </div>
       <textarea
         v-model="draft.content"
         class="editor-textarea"
@@ -478,6 +511,101 @@ function statusClass() {
   background: var(--fg);
   color: var(--bg);
   text-transform: uppercase;
+}
+
+/* ---- editor toolbar ---- */
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-bottom: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  flex-wrap: wrap;
+  min-height: 36px;
+}
+
+.toolbar-label {
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 10px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.toolbar-actions button {
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  font-family: var(--font-main);
+  font-size: 0.7rem;
+  font-weight: bold;
+  cursor: url('/win-95-98/hand.cur'), pointer;
+  text-transform: uppercase;
+  line-height: 1.4;
+  transition: all 0.1s;
+  opacity: 0.85;
+}
+
+.toolbar-actions button:hover {
+  opacity: 1;
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.toolbar-actions button:active {
+  transform: translate(1px, 1px);
+}
+
+.toolbar-actions button:disabled {
+  opacity: 0.4;
+  cursor: url('/win-95-98/ilegal.cur'), not-allowed;
+}
+
+.toolbar-actions button.toolbar-uploading {
+  opacity: 1;
+  animation: pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.5; }
+  to   { opacity: 1; }
+}
+
+.toolbar-sep {
+  opacity: 0.35;
+  font-size: 0.7rem;
+  margin: 0 2px;
+  user-select: none;
+}
+
+@media (max-width: 768px) {
+  .editor-toolbar {
+    gap: 4px;
+    padding: 4px 6px;
+  }
+  .toolbar-label {
+    margin-right: 4px;
+    font-size: 0.65rem;
+  }
+  .toolbar-actions {
+    gap: 2px;
+  }
+  .toolbar-actions button {
+    padding: 2px 5px;
+    font-size: 0.65rem;
+  }
 }
 
 .editor-textarea {

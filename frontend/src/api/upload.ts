@@ -1,7 +1,12 @@
 import { post } from './client'
 
-export function uploadImage(file: File): Promise<{ url: string }> {
+export interface UploadResult {
+  url: string
+  kind: 'image' | 'audio' | 'video' | 'file'
+}
+
+export function uploadFile(file: File): Promise<UploadResult> {
   const fd = new FormData()
   fd.append('file', file)
-  return post<{ url: string }>('/admin/upload', fd)
+  return post<UploadResult>('/admin/upload', fd)
 }

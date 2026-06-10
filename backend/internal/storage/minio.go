@@ -67,9 +67,10 @@ func (s *S3) ListObjectKeys(ctx context.Context, prefix string) ([]string, error
 	return keys, nil
 }
 
-// GenerateKey returns an object key from a UUID and a content-type (e.g. "image/png")
-// or plain extension (e.g. ".jpg"). Falls back to ".bin" if neither is usable.
-func GenerateKey(uuid, contentType string) string {
+// GenerateKey returns an object key from a prefix, UUID, and content-type (e.g.
+// "image/png") or plain extension (e.g. ".jpg"). Falls back to ".bin" if neither
+// is usable.  Prefix is typically "images", "audio", "video", or "files".
+func GenerateKey(prefix, uuid, contentType string) string {
 	ext := ""
 	// Try MIME type first (e.g. "image/png" → ".png")
 	if exts, err := mime.ExtensionsByType(contentType); err == nil && len(exts) > 0 {
@@ -86,5 +87,8 @@ func GenerateKey(uuid, contentType string) string {
 	if ext == "" {
 		ext = ".bin"
 	}
-	return "images/" + uuid + filepath.Ext(ext)
+	if prefix == "" {
+		prefix = "files"
+	}
+	return prefix + "/" + uuid + filepath.Ext(ext)
 }

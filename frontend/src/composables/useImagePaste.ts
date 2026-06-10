@@ -1,4 +1,4 @@
-import { uploadImage } from '../api/upload'
+import { uploadFile } from '../api/upload'
 
 /**
  * Handle paste event: if clipboard contains an image file,
@@ -25,7 +25,7 @@ export function useImagePaste(textarea: () => HTMLTextAreaElement | null) {
       insertAtCursor(placeholder)
 
       try {
-        const data = await uploadImage(file)
+        const data = await uploadFile(file)
         replacePlaceholder(uuid, data.url)
       } catch {
         // 失败：占位符保留，用户手动处理
