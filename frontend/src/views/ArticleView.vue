@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { getPost } from '../api/posts'
 import type { PostPayload } from '../api/posts'
 import ArticleRenderer from '../components/ArticleRenderer.vue'
+import ShareQR from '../components/ShareQR.vue'
 
 const route = useRoute()
 const slug = route.params.slug as string
@@ -38,6 +39,17 @@ onMounted(async () => {
       <ArticleRenderer :content="post.content" />
 
       <div class="eof-marker">EOF</div>
+
+      <div class="share-row">
+        <ShareQR
+          :slug="post.slug"
+          :title="post.title"
+          :tags="post.tags"
+          :read-time="post.readTime"
+          :word-count="post.wordCount"
+          :created-at="post.createdAt"
+        />
+      </div>
     </article>
   </template>
   <template v-else>

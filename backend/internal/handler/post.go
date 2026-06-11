@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -11,6 +12,17 @@ import (
 
 	"stdoutcms/internal/store"
 )
+
+// ---- Helpers ----
+
+func calcReadTime(wordCount int) string {
+	const charsPerMin = 400
+	secs := int(math.Round(float64(wordCount) / float64(charsPerMin) * 60))
+	if secs < 60 {
+		return fmt.Sprintf("%dS", secs)
+	}
+	return fmt.Sprintf("%d MIN", int(math.Round(float64(secs)/60)))
+}
 
 // ---- Public Posts ----
 
@@ -131,6 +143,9 @@ func CreatePost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "slug must be lowercase alphanumeric with hyphens only"})
 			return
 		}
+		if po.ReadTime == "" {
+			po.ReadTime = calcReadTime(po.WordCount)
+		}
 		if err := pg.CreatePost(ctx, &po); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -151,6 +166,9 @@ func UpdatePost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 		}
 		if po.Tags == nil {
 			po.Tags = []string{}
+		}
+		if po.ReadTime == "" {
+			po.ReadTime = calcReadTime(po.WordCount)
 		}
 		if err := pg.UpdatePost(ctx, slug, &po); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

@@ -153,6 +153,7 @@ async function handlePublish() {
     tags: draft.value.tags.split(',').map(s => s.trim()).filter(Boolean),
     author: 'root',
     wordCount: draft.value.content.replace(/\s/g, '').length,
+    readTime: calcReadTime(draft.value.content.replace(/\s/g, '').length),
     published: true,
   }
   try {
@@ -184,6 +185,7 @@ async function handleSave() {
     tags: draft.value.tags.split(',').map(s => s.trim()).filter(Boolean),
     author: 'root',
     wordCount: draft.value.content.replace(/\s/g, '').length,
+    readTime: calcReadTime(draft.value.content.replace(/\s/g, '').length),
     published: false,
   }
   try {
@@ -207,6 +209,13 @@ async function handleSave() {
 function statusClass() {
   if (status.value.startsWith('ERROR')) return 'status-error'
   return 'status-ok'
+}
+
+function calcReadTime(wordCount: number): string {
+  const charsPerMin = 400
+  const secs = Math.round(wordCount / charsPerMin * 60)
+  if (secs < 60) return `${secs}S`
+  return `${Math.round(secs / 60)} MIN`
 }
 </script>
 
