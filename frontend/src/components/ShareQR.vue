@@ -15,7 +15,7 @@ const props = defineProps<{
 const open = ref(false)
 const cardRef = ref<HTMLElement | null>(null)
 
-const url = computed(() => `${window.location.origin}/posts/${props.slug}`)
+const url = computed(() => `${window.location.origin}/article/${props.slug}`)
 const pubDate = computed(() => props.createdAt?.slice(0, 10) || '—')
 const tagsStr = computed(() => (props.tags || []).join(' / ') || '—')
 const read = computed(() => {

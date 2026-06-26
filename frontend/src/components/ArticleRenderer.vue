@@ -92,17 +92,22 @@ function initPlayers(root: HTMLElement) {
       else src.pause()
     })
 
-    // ---- seek drag ----
+    // ---- seek drag (mouse + touch) ----
     let seeking = false
+
+    function seekFromX(clientX: number) {
+      if (!src) return
+      const rect = track!.getBoundingClientRect()
+      src.currentTime = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * duration
+    }
+
     track!.addEventListener('mousedown', (e) => {
       seeking = true
-      const rect = track!.getBoundingClientRect()
-      src.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * duration
+      seekFromX(e.clientX)
 
       const onMove = (e: MouseEvent) => {
         if (!seeking) return
-        const rect = track!.getBoundingClientRect()
-        src.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * duration
+        seekFromX(e.clientX)
       }
       const onUp = () => { seeking = false; cleanup() }
       const cleanup = () => {
@@ -113,11 +118,30 @@ function initPlayers(root: HTMLElement) {
       document.addEventListener('mouseup', onUp)
     })
 
+    track!.addEventListener('touchstart', (e) => {
+      seeking = true
+      seekFromX(e.touches[0].clientX)
+
+      const onMove = (e: TouchEvent) => {
+        if (!seeking) return
+        e.preventDefault()
+        seekFromX(e.touches[0].clientX)
+      }
+      const onEnd = () => { seeking = false; cleanup() }
+      const cleanup = () => {
+        document.removeEventListener('touchmove', onMove)
+        document.removeEventListener('touchend', onEnd)
+        document.removeEventListener('touchcancel', onEnd)
+      }
+      document.addEventListener('touchmove', onMove, { passive: false })
+      document.addEventListener('touchend', onEnd)
+      document.addEventListener('touchcancel', onEnd)
+    }, { passive: true })
+
     // click fallback
     track!.addEventListener('click', (e) => {
       if (isNaN(duration)) return
-      const rect = track!.getBoundingClientRect()
-      src.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * duration
+      seekFromX((e as MouseEvent).clientX)
     })
 
     // ---- mute toggle ----

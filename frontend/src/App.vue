@@ -8,8 +8,10 @@ import ChatWidget from './components/ChatWidget.vue'
 import { fetchMeta } from './api/meta'
 import { listPosts } from './api/posts'
 import type { PostPayload } from './api/posts'
+import { useBreakpoint } from './composables/useBreakpoint'
 
 const route = useRoute()
+const { isMobile } = useBreakpoint()
 
 const THEME_KEY = 'blog_theme_pref'
 const aiEnabled = ref(false)
@@ -88,7 +90,7 @@ const activeArticleSlug = computed(() =>
     </div>
 
     <TerminalFooter />
-    <ChatWidget v-if="aiEnabled" />
+    <ChatWidget v-if="aiEnabled && !isMobile" />
   </div>
 </template>
 

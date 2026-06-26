@@ -38,7 +38,50 @@ function detectMedia(alt: string, src: string): { type: MediaType; label: string
   return { type: inferred, label: alt }
 }
 
-function renderMedia(type: MediaType, label: string, src: string): string {
+// renderMediaMobile outputs touch-friendly HTML: native <audio>/<video> controls,
+// full-width images, compact file download bar.
+function renderMediaMobile(type: MediaType, label: string, src: string): string {
+  const safeSrc = escapeAttr(src)
+  const safeLabel = escapeHtml(label)
+  const filename = src.split('/').pop() || 'unknown'
+  const display = safeLabel || filename
+
+  switch (type) {
+    case 'audio':
+      return `<figure class="md-media md-audio md-mobile" data-player>`
+        + `<audio src="${safeSrc}" preload="metadata" class="md-player-src"></audio>`
+        + `<div class="md-media-meta">`
+        + `<div class="md-meta-info">`
+        + `<span class="md-audio-name">&#x266B; ${display}</span>`
+        + `<span class="md-audio-info">--</span>`
+        + `</div>`
+        + `<span class="md-status">STATUS: IDLE</span>`
+        + `</div>`
+        + `<div class="md-player-controls">`
+        + `<button class="md-player-btn" data-play>PLAY</button>`
+        + `<div class="md-player-track" data-seek><div class="md-player-progress"></div></div>`
+        + `<div class="md-player-time">--:-- / --:--</div>`
+        + `</div></figure>`
+    case 'video':
+      return `<figure class="md-media md-video md-mobile">`
+        + `<video src="${safeSrc}" preload="metadata" controls playsinline></video>`
+        + `</figure>`
+    case 'file':
+      return `<figure class="md-media md-file md-mobile">`
+        + `<a href="${safeSrc}" download class="md-file-link">`
+        + `<div class="md-media-meta"><span>FILE: ${display}</span><span>&#x2193;</span></div>`
+        + `</a></figure>`
+    default: // image — full width, no thumbnail/crop
+      return `<figure class="md-media md-image md-mobile">`
+        + `<img src="${safeSrc}" alt="${safeLabel}">`
+        + (safeLabel ? `<figcaption class="md-image-caption">${safeLabel}</figcaption>` : '')
+        + `</figure>`
+  }
+}
+
+function renderMedia(type: MediaType, label: string, src: string, mobile = false): string {
+  if (mobile) return renderMediaMobile(type, label, src)
+
   const safeSrc = escapeAttr(src)
   const safeLabel = escapeHtml(label)
   const filename = src.split('/').pop() || 'unknown'
@@ -99,7 +142,7 @@ function renderMedia(type: MediaType, label: string, src: string): string {
 
 // inline transforms inline markdown in pre-escaped text.
 // Text is escaped BEFORE markdown rules are applied.
-function inline(html: string): string {
+function inline(html: string, mobile = false): string {
   const safe = escapeHtml(html)
   return safe
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -107,7 +150,7 @@ function inline(html: string): string {
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt: string, src: string) => {
       const { type, label } = detectMedia(alt, src)
-      return renderMedia(type, label, src)
+      return renderMedia(type, label, src, mobile)
     })
     .replace(/\[(.+?)\]\((.+?)\)/g, (_, text: string, href: string) =>
       `<a href="${escapeAttr(href)}">${text}</a>`
@@ -120,7 +163,7 @@ function preserveIndent(html: string): string {
   return html.replace(/^( {2,})/gm, (_, spaces) => '&nbsp;'.repeat(spaces.length))
 }
 
-export function parseMarkdown(src: string): string {
+export function parseMarkdown(src: string, mobile = false): string {
   const lines = src.split('\n')
   const out: string[] = []
   let i = 0
@@ -150,14 +193,14 @@ export function parseMarkdown(src: string): string {
 
     // h2
     if (line.startsWith('## ')) {
-      out.push(`<h2>${inline(line.slice(3))}</h2>`)
+      out.push(`<h2>${inline(line.slice(3), mobile)}</h2>`)
       i++
       continue
     }
 
     // h3
     if (line.startsWith('### ')) {
-      out.push(`<h3>${inline(line.slice(4))}</h3>`)
+      out.push(`<h3>${inline(line.slice(4), mobile)}</h3>`)
       i++
       continue
     }
@@ -170,7 +213,7 @@ export function parseMarkdown(src: string): string {
         q.push(lines[i].slice(2))
         i++
       }
-      out.push(`<blockquote>${inline(q.join('\n'))}</blockquote>`)
+      out.push(`<blockquote>${inline(q.join('\n'), mobile)}</blockquote>`)
       continue
     }
 
@@ -178,7 +221,7 @@ export function parseMarkdown(src: string): string {
     if (line.startsWith('- ')) {
       const items: string[] = []
       while (i < lines.length && lines[i].startsWith('- ')) {
-        items.push(inline(lines[i].slice(2)))
+        items.push(inline(lines[i].slice(2), mobile))
         i++
       }
       out.push(`<ul>${items.map((it) => `<li>${it}</li>`).join('')}</ul>`)
@@ -205,7 +248,7 @@ export function parseMarkdown(src: string): string {
       }
       raw += text
     }
-    out.push(`<p>${preserveIndent(inline(raw).replace(/\n/g, '<br>'))}</p>`)
+    out.push(`<p>${preserveIndent(inline(raw, mobile).replace(/\n/g, '<br>'))}</p>`)
   }
 
   return out.join('\n')

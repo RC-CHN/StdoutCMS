@@ -118,6 +118,7 @@ watch(() => route.fullPath, startTypeWriter)
 .btn-sm {
   padding: 4px 10px;
   font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 /* 汉堡按钮 */

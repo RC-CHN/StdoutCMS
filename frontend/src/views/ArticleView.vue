@@ -4,13 +4,19 @@ import { useRoute } from 'vue-router'
 import { getPost } from '../api/posts'
 import type { PostPayload } from '../api/posts'
 import ArticleRenderer from '../components/ArticleRenderer.vue'
+import MobileArticleRenderer from '../components/MobileArticleRenderer.vue'
 import ShareQR from '../components/ShareQR.vue'
+import MobileChatWidget from '../components/MobileChatWidget.vue'
+import { fetchMeta } from '../api/meta'
+import { useBreakpoint } from '../composables/useBreakpoint'
 
 const route = useRoute()
 const slug = route.params.slug as string
 const post = ref<PostPayload | null>(null)
 const loading = ref(false)
 const error = ref('')
+const aiEnabled = ref(false)
+const { isMobile } = useBreakpoint()
 
 onMounted(async () => {
   loading.value = true
@@ -21,6 +27,10 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+
+  fetchMeta()
+    .then(m => { aiEnabled.value = m.ai })
+    .catch(() => { aiEnabled.value = false })
 })
 </script>
 
@@ -36,11 +46,12 @@ onMounted(async () => {
         <h1 class="article-title">{{ post.title }}</h1>
       </div>
 
-      <ArticleRenderer :content="post.content" />
+      <ArticleRenderer v-if="!isMobile" :content="post.content" />
+      <MobileArticleRenderer v-else :content="post.content" />
 
       <div class="eof-marker">EOF</div>
 
-      <div class="share-row">
+      <div v-if="!isMobile" class="share-row">
         <ShareQR
           :slug="post.slug"
           :title="post.title"
@@ -50,6 +61,8 @@ onMounted(async () => {
           :created-at="post.createdAt"
         />
       </div>
+
+      <MobileChatWidget v-if="aiEnabled && isMobile" />
     </article>
   </template>
   <template v-else>
