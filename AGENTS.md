@@ -232,9 +232,15 @@ StdoutCMS/
   auto-saves on change (1s debounce), restored on mount.
 - Image paste: `useImagePaste` inserts `![image](uploading-xxx)` placeholder,
   uploads via `uploadImage()`, then replaces placeholder with real URL.
-- Markdown parser: hand-written in `utils/md.ts`. Supports h2/h3, code fences,
-  blockquotes, unordered lists, bold, italic, inline code, links, images.
-  No external markdown library.
+- Markdown parser: hand-written in `utils/md.ts`. Supports h1–h6 (rendered as
+  h2/h3), code fences (``` and ~~~), blockquotes, unordered/ordered lists
+  (one nesting level), bold, italic, strikethrough, inline code, links,
+  images/media embeds, horizontal rules, backslash escapes and bare-URL
+  autolinks. No external markdown library.
+  Inline parsing is placeholder-based: text is escaped first, each construct
+  (code spans, media, links, autolinks) is replaced by a `\x00N\x00` token,
+  emphasis runs last, then tokens are restored. Link/media URLs are
+  sanitized (javascript:/data: schemes blocked).
 - Theme: `dark-mode` class on `body`, preference stored in `localStorage('blog_theme_pref')`.
   Falls back to `prefers-color-scheme: dark`.
 
@@ -401,8 +407,8 @@ cd frontend && npm run build
 3. **Single admin user** — `admins` table supports multiple rows, but seeding
    only creates one, and there's no admin management UI.
 4. **No frontend tests** — Vue components and composables are untested.
-5. **Markdown parser edge cases** — hand-rolled parser may fail on nested
-   formatting (bold inside links, etc.).
+5. **Markdown parser edge cases** — hand-rolled parser; deep nesting beyond
+   one list level, tables, and reference-style links are unsupported.
 6. **Store tests missing** — PostgreSQL and Redis are tested only indirectly
    via handler/scheduler/task tests. No isolated DB tests with test fixtures.
 7. **No structured logging on frontend** — errors are mostly `console.error`
