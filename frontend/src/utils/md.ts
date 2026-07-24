@@ -224,8 +224,14 @@ function inline(raw: string, mobile = false): string {
     return hold(`<a href="${href}">${url}</a>`) + trail
   })
 
-  return emphasis(text)
-    .replace(/\x00(\d+)\x00/g, (_, n: string) => stash[Number(n)])
+  // Restore placeholders. Loop because tokens can nest (e.g. a code span
+  // inside a link label): a stashed fragment may itself contain tokens,
+  // always with smaller indices, so this converges.
+  let result = emphasis(text)
+  while (result.includes('\x00')) {
+    result = result.replace(/\x00(\d+)\x00/g, (_, n: string) => stash[Number(n)])
+  }
+  return result
 }
 
 // preserveIndent converts leading spaces (2+) to &nbsp; so they survive

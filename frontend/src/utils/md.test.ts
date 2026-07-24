@@ -58,6 +58,25 @@ const exact: Array<[string, string, string]> = [
   ['dash list not hr', '- a\n- b', '<ul><li>a</li><li>b</li></ul>'],
   ['blockquote with emphasis', '> **bold** quote',
     '<blockquote><strong>bold</strong> quote</blockquote>'],
+
+  // --- edge cases ---
+  ['empty input', '', ''],
+  ['multiple paragraphs', 'a\n\nb', '<p>a</p>\n<p>b</p>'],
+  ['html tags escaped in text', '<script>alert(1)</script>',
+    '<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>'],
+  ['star bullet list', '* a\n* b', '<ul><li>a</li><li>b</li></ul>'],
+  ['list item with inline format', '- **bold** item',
+    '<ul><li><strong>bold</strong> item</li></ul>'],
+  ['blockquote without space', '>quote', '<blockquote>quote</blockquote>'],
+  ['heading with inline code', '## `ls` command', '<h2><code>ls</code> command</h2>'],
+  ['unclosed fence consumes to eof', '```\ncode',
+    '<pre><div class="code-lang">code</div><code>code</code></pre>'],
+  ['unmatched bold stays literal', '**broken', '<p>**broken</p>'],
+  ['strikethrough with space stays literal', 'a ~~ b', '<p>a ~~ b</p>'],
+  ['code span inside link label', '[`code`](https://x.com)',
+    '<p><a href="https://x.com"><code>code</code></a></p>'],
+  ['ordered nested in unordered', '- a\n  1. x\n- b',
+    '<ul><li>a<ol><li>x</li></ol></li><li>b</li></ul>'],
 ]
 
 // Substring checks for cases where full-figure HTML is noisy to assert.
@@ -79,6 +98,10 @@ const contains: Array<[string, string, string]> = [
   ['editor paste placeholder survives', '![image](uploading-abc123)', 'uploading-abc123'],
   ['explicit media prefix', '![audio:my song](https://cdn.x.com/f.bin)', 'md-audio'],
   ['explicit file prefix', '![file:report.pdf](https://cdn.x.com/x)', 'md-file'],
+  ['autolink with query single-escaped', 'go https://x.com/?a=1&b=2 now',
+    'href="https://x.com/?a=1&amp;b=2"'],
+  ['image with empty alt', '![](https://cdn.x.com/a.png)',
+    '<img src="https://cdn.x.com/a.png" alt="">'],
 ]
 
 describe('parseMarkdown', () => {
@@ -103,5 +126,16 @@ describe('parseMarkdown', () => {
   it('mobile flag switches media renderer', () => {
     expect(parseMarkdown('![a](https://x.com/b.mp3)', true)).toContain('md-mobile')
     expect(parseMarkdown('![a](https://x.com/b.mp3)')).not.toContain('md-mobile')
+  })
+
+  it('explicit image prefix + javascript: src is neutralized', () => {
+    const html = parseMarkdown('![image:x](javascript:alert(1))')
+    expect(html).not.toContain('javascript:')
+    expect(html).toContain('src="#"')
+  })
+
+  it('mobile video renders native controls', () => {
+    expect(parseMarkdown('![v](https://x.com/v.mp4)', true))
+      .toContain('<video src="https://x.com/v.mp4" preload="metadata" controls playsinline>')
   })
 })
