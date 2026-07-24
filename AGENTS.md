@@ -68,7 +68,13 @@ go test ./internal/scheduler  # scheduler only
 go test ./internal/task       # orphan image tests
 ```
 
-Frontend has no test suite yet.
+```bash
+cd frontend
+npm test              # vitest — markdown parser suite (src/utils/md.test.ts)
+```
+
+Frontend coverage currently targets the markdown parser; Vue components
+and composables are still untested.
 
 ## Project structure
 
@@ -406,7 +412,8 @@ cd frontend && npm run build
    no renewal on activity.
 3. **Single admin user** — `admins` table supports multiple rows, but seeding
    only creates one, and there's no admin management UI.
-4. **No frontend tests** — Vue components and composables are untested.
+4. **Thin frontend test coverage** — only the markdown parser is tested
+   (vitest); Vue components and composables are untested.
 5. **Markdown parser edge cases** — hand-rolled parser; deep nesting beyond
    one list level, tables, and reference-style links are unsupported.
 6. **Store tests missing** — PostgreSQL and Redis are tested only indirectly
