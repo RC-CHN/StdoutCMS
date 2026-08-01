@@ -101,7 +101,7 @@ StdoutCMS/
 │   │   │   ├── post.go            ← public + admin post CRUD (ListPosts, CreatePost, etc.)
 │   │   │   ├── project.go         ← public + admin project CRUD
 │   │   │   ├── auth.go            ← Login, Logout
-│   │   │   ├── upload.go          ← UploadImage (multipart, type/size validation)
+│   │   │   ├── upload.go          ← UploadFile (multipart, image/audio/video/file, kind-prefixed keys)
 │   │   │   ├── about.go           ← GetAbout, GetAboutAdmin, UpdateAbout
 │   │   │   ├── chat.go            ← AI chat streaming (SSE, OpenAI-compatible)
 │   │   │   └── handler_test.go    ← tests for Health, Meta, generateToken
@@ -138,7 +138,7 @@ StdoutCMS/
 │       │   ├── projects.ts        ← project API calls + ProjectPayload type
 │       │   ├── about.ts           ← about API calls + AboutPayload type
 │       │   ├── auth.ts            ← login/logout
-│       │   ├── upload.ts          ← image upload (FormData)
+│       │   ├── upload.ts          ← file upload (FormData, returns {url, kind})
 │       │   ├── meta.ts            ← /meta endpoint
 │       │   └── chat.ts            ← SSE streaming chat + generateMeta
 │       ├── router/
@@ -147,17 +147,23 @@ StdoutCMS/
 │       │   ├── useAuth.ts         ← login state (token in memory, sessionStorage flag)
 │       │   ├── useChat.ts         ← chat message state, send via SSE
 │       │   ├── useDraft.ts        ← localStorage auto-save draft for post editor
-│       │   └── useImagePaste.ts   ← clipboard image paste → upload → replace placeholder
+│       │   ├── useImagePaste.ts   ← clipboard image paste → upload → replace placeholder
+│       │   ├── useEditorToolbar.ts ← editor toolbar: multi-kind media upload via file picker
+│       │   └── useBreakpoint.ts   ← shared isMobile flag (768px breakpoint, resize listener)
 │       ├── utils/
-│       │   └── md.ts              ← custom markdown parser (hand-written, no library)
+│       │   ├── md.ts              ← custom markdown parser (hand-written, no library)
+│       │   └── md.test.ts         ← vitest suite for the markdown parser
 │       ├── components/
 │       │   ├── TerminalHeader.vue  ← typewriter effect, theme toggle, login/logout
 │       │   ├── TerminalFooter.vue  ← marquee with meta info (post count, uptime)
 │       │   ├── FileListing.vue     ← `ls -lh` style directory listing (root + articles)
 │       │   ├── AdminNav.vue        ← admin tab bar [posts] [projects] [about]
 │       │   ├── PostCard.vue        ← blog post card on home page
-│       │   ├── ArticleRenderer.vue ← markdown → HTML renderer + image lightbox
-│       │   ├── ChatWidget.vue      ← draggable floating chat window (SSE-enabled)
+│       │   ├── ArticleRenderer.vue ← markdown → HTML renderer + image lightbox (desktop)
+│       │   ├── MobileArticleRenderer.vue ← mobile renderer: custom audio player, img → new tab
+│       │   ├── ChatWidget.vue      ← draggable floating chat window (SSE-enabled, desktop)
+│       │   ├── MobileChatWidget.vue ← mobile chat panel (SSE, article ctx aware)
+│       │   ├── ShareQR.vue         ← QR share card modal (qrcode + html2canvas)
 │       │   └── TerminalFeedback.vue ← [ OK ] / [FAIL] status messages
 │       ├── views/
 │       │   ├── HomeView.vue        ← paginated post list
@@ -222,8 +228,11 @@ StdoutCMS/
   `rd.InvalidateAbout()`.
 - Slug validation: regex `^[a-z0-9]+(-[a-z0-9]+)*$` (lowercase, hyphens, no
   consecutive hyphens, no leading/trailing hyphen). Applied in CreatePost.
-- Image keys: `images/{uuid}.{ext}`, extension derived from MIME type via
+- Media keys: `{kind}/{uuid}.{ext}` where kind is `images`/`audio`/`video`/`files`
+  (derived from the upload's MIME type via `kindForContentType`), extension from
   `mime.ExtensionsByType`.
+- Read time: `calcReadTime()` in handler/post.go derives it from word count on
+  create/update when `read_time` is empty; explicit values are kept.
 - Migrations: `001_init.sql` is checked for table existence before running.
   `002_about.sql` is unconditional but idempotent (INSERT ... WHERE NOT EXISTS).
 
@@ -237,7 +246,13 @@ StdoutCMS/
 - Drafts: `useDraft()` persists editor state to `localStorage('blog_editor_draft')`,
   auto-saves on change (1s debounce), restored on mount.
 - Image paste: `useImagePaste` inserts `![image](uploading-xxx)` placeholder,
-  uploads via `uploadImage()`, then replaces placeholder with real URL.
+  uploads via `uploadFile()`, then replaces placeholder with real URL.
+- Editor toolbar: `useEditorToolbar` offers image/audio/video/file pickers that
+  insert cursor-aware placeholders into the textarea and swap in the final URL
+  (`![kind:name](url)`); `uploadFile()` returns `{url, kind}`.
+- Mobile UI: `useBreakpoint()` shares a reactive `isMobile` flag (768px).
+  ArticleView/App.vue swap in Mobile* components when mobile; desktop keeps
+  ArticleRenderer/ChatWidget.
 - Markdown parser: hand-written in `utils/md.ts`. Supports h1–h6 (rendered as
   h2/h3), code fences (``` and ~~~), blockquotes, unordered/ordered lists
   (one nesting level), bold, italic, strikethrough, inline code, links,
@@ -312,7 +327,7 @@ or `blog_session_token` cookie.
 | DELETE | /logout | Clears cookie + Redis session |
 | GET/POST | /posts | List (paginated) / Create |
 | GET/PUT/DELETE | /posts/:slug | Read (incl. drafts) / Update / Delete |
-| POST | /upload | Multipart, max 10MB, image/ only |
+| POST | /upload | Multipart; image/audio/video/file, 10MB (video 100MB); returns {url, kind} |
 | GET/POST | /projects | List / Create |
 | PUT/DELETE | /projects/:id | Update / Delete |
 | GET/PUT | /about | Read / Update (upsert) |
