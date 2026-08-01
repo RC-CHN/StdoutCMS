@@ -1,21 +1,92 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { nextTick, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import { login } from '../api/auth'
+import { ApiError } from '../api/client'
+
+interface LoginError {
+  title: string
+  detail: string
+  status: string
+}
 
 const router = useRouter()
+const route = useRoute()
 const { setToken } = useAuth()
 
 const username = ref('')
 const password = ref('')
-const error = ref('')
+const error = ref<LoginError | null>(
+  route.query.reason === 'session_expired'
+    ? {
+        title: 'SESSION EXPIRED',
+        detail: 'Your previous session is no longer valid. Sign in again to continue.',
+        status: 'HTTP 401 / SESSION_INVALID',
+      }
+    : null,
+)
+const errorBox = ref<HTMLElement | null>(null)
 const loading = ref(false)
 
+function describeLoginError(cause: unknown): LoginError {
+  if (cause instanceof ApiError) {
+    if (cause.status === 401) {
+      return {
+        title: 'AUTHENTICATION FAILED',
+        detail: 'The username or password is incorrect. Check spelling and capitalization, then try again.',
+        status: 'HTTP 401 / INVALID_CREDENTIALS',
+      }
+    }
+    if (cause.status === 400) {
+      return {
+        title: 'REQUEST REJECTED',
+        detail: cause.message || 'The server could not read the submitted credentials.',
+        status: `HTTP 400${cause.code ? ` / ${cause.code}` : ''}`,
+      }
+    }
+    if (cause.status === 429) {
+      return {
+        title: 'TOO MANY ATTEMPTS',
+        detail: 'The server is temporarily limiting login attempts. Wait a moment before retrying.',
+        status: `HTTP 429${cause.code ? ` / ${cause.code}` : ''}`,
+      }
+    }
+    if (cause.status >= 500) {
+      return {
+        title: 'AUTH SERVICE UNAVAILABLE',
+        detail: 'The server could not complete authentication. Please try again later.',
+        status: `HTTP ${cause.status}${cause.code ? ` / ${cause.code}` : ''}`,
+      }
+    }
+    return {
+      title: 'LOGIN REQUEST FAILED',
+      detail: cause.message,
+      status: `HTTP ${cause.status}${cause.code ? ` / ${cause.code}` : ''}`,
+    }
+  }
+
+  return {
+    title: 'CONNECTION FAILED',
+    detail: 'The authentication server could not be reached. Check your connection and try again.',
+    status: 'NETWORK_ERROR',
+  }
+}
+
+async function showError(value: LoginError) {
+  error.value = value
+  await nextTick()
+  errorBox.value?.focus()
+}
+
 async function handleLogin() {
-  error.value = ''
+  error.value = null
   if (!username.value || !password.value) {
-    error.value = 'ERROR: username and password required'
+    await showError({
+      title: 'MISSING CREDENTIALS',
+      detail: 'Enter both a username and password before submitting.',
+      status: 'INPUT_REQUIRED',
+    })
     return
   }
 
@@ -23,9 +94,9 @@ async function handleLogin() {
   try {
     const data = await login(username.value, password.value)
     setToken(data.token)
-    router.push('/admin')
-  } catch (e: any) {
-    error.value = 'ERROR: ' + (e.message || 'authentication failed')
+    await router.push('/admin')
+  } catch (cause: unknown) {
+    await showError(describeLoginError(cause))
   } finally {
     loading.value = false
   }
@@ -44,15 +115,43 @@ async function handleLogin() {
 
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-row">
-          <label>USERNAME:</label>
-          <input v-model="username" type="text" placeholder="root" autocomplete="username" />
+          <label for="login-username">USERNAME:</label>
+          <input
+            id="login-username"
+            v-model="username"
+            type="text"
+            placeholder="root"
+            autocomplete="username"
+            :aria-invalid="!!error"
+            aria-describedby="login-error"
+          />
         </div>
         <div class="form-row">
-          <label>PASSWORD:</label>
-          <input v-model="password" type="password" placeholder="********" autocomplete="current-password" />
+          <label for="login-password">PASSWORD:</label>
+          <input
+            id="login-password"
+            v-model="password"
+            type="password"
+            placeholder="********"
+            autocomplete="current-password"
+            :aria-invalid="!!error"
+            aria-describedby="login-error"
+          />
         </div>
 
-        <div v-if="error" class="error-msg">{{ error }}</div>
+        <div
+          v-if="error"
+          id="login-error"
+          ref="errorBox"
+          class="error-msg"
+          role="alert"
+          aria-live="assertive"
+          tabindex="-1"
+        >
+          <div class="error-title"><span>[FAIL]</span> {{ error.title }}</div>
+          <div class="error-status">{{ error.status }}</div>
+          <p>{{ error.detail }}</p>
+        </div>
 
         <div class="form-actions">
           <button type="submit" class="btn" :disabled="loading">
@@ -137,11 +236,32 @@ async function handleLogin() {
 
 .error-msg {
   color: #ff4444;
-  font-weight: bold;
   font-size: 0.85rem;
   margin-bottom: 1rem;
-  padding: 6px 10px;
+  padding: 10px 12px;
   border: 1px solid #ff4444;
+  outline: none;
+}
+
+.error-title {
+  font-weight: bold;
+}
+
+.error-title span {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.error-status {
+  margin: 3px 0 5px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.error-msg p {
+  color: var(--fg);
+  line-height: 1.45;
 }
 
 .form-actions {
