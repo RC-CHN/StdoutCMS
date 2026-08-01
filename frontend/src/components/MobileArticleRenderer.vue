@@ -139,7 +139,7 @@ onMounted(() => {
 }
 .article-content :deep(h2::before) {
   content: ">> ";
-  color: var(--muted);
+  color: var(--accent);
 }
 
 .article-content :deep(h3) {
@@ -149,7 +149,7 @@ onMounted(() => {
 }
 .article-content :deep(h3::before) {
   content: "# ";
-  color: var(--muted);
+  color: var(--accent);
 }
 
 .article-content :deep(p) {
@@ -174,12 +174,11 @@ onMounted(() => {
 }
 
 .article-content :deep(blockquote) {
-  border-left: 3px solid var(--border);
+  border-left: 3px solid var(--accent);
   padding: 0.8rem 1rem;
   margin: 1.5rem 0;
   color: var(--muted);
   background: rgba(128, 128, 128, 0.05);
-  font-style: italic;
 }
 
 .article-content :deep(code) {

@@ -7,22 +7,27 @@
   --fg: #111111;
   --muted: #666666;
   --border: #111111;
+  --accent: #0a7d2c;
+  --accent-fg: #f4f4f4;
   --shadow: 5px 5px 0px #111111;
   --grid-color: rgba(0, 0, 0, 0.05);
-  --font-main: 'Courier New', Courier, '宋体', 'SimSun', monospace;
+  --font-main: 'Courier New', Courier, 'Sarasa Mono SC', 'Noto Sans Mono CJK SC',
+    '更纱黑体 Mono SC', '宋体', 'SimSun', monospace;
   --selection-bg: #111111;
   --selection-fg: #f4f4f4;
 }
 
 body.dark-mode {
-  --bg: #1a1a1c;
-  --fg: #d4d4d4;
-  --muted: #808080;
-  --border: #555555;
-  --shadow: 5px 5px 0px rgba(0, 0, 0, 0.35);
-  --grid-color: rgba(255, 255, 255, 0.03);
-  --selection-bg: #d4d4d4;
-  --selection-fg: #1a1a1c;
+  --bg: #0d1117;
+  --fg: #d6dde3;
+  --muted: #7d8590;
+  --border: #4d5560;
+  --accent: #33ff66;
+  --accent-fg: #0d1117;
+  --shadow: 5px 5px 0px rgba(0, 0, 0, 0.45);
+  --grid-color: rgba(255, 255, 255, 0.035);
+  --selection-bg: #d6dde3;
+  --selection-fg: #0d1117;
 }
 
 * {
@@ -67,16 +72,49 @@ summary {
   color: var(--selection-fg);
 }
 
+/* accent caret in text fields */
+input,
+textarea {
+  caret-color: var(--accent);
+}
+
+/* keyboard focus: dashed terminal outline */
+:focus-visible {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+/* styled scrollbar: thin track, blocky thumb */
 html {
   scrollbar-gutter: stable;
+  scrollbar-color: var(--fg) var(--bg);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+  border-left: 1px solid var(--grid-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--fg);
+  border: 3px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 body {
   background-color: var(--bg);
   color: var(--fg);
   font-family: var(--font-main);
-  font-size: 16px;
-  line-height: 1.7;
+  font-size: 15px;
+  line-height: 1.8;
   transition: background-color 0.3s, color 0.3s;
   overflow-x: hidden;
   background-image:
@@ -91,9 +129,13 @@ body {
   padding: 2rem 1.5rem;
 }
 
-/* 按钮 */
+/* 按钮：hover 时反色从左扫过（终端填充感） */
 button, .btn {
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: linear-gradient(var(--fg), var(--fg));
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 0% 100%;
   color: var(--fg);
   border: 2px solid var(--border);
   padding: 5px 15px;
@@ -102,7 +144,7 @@ button, .btn {
   font-weight: bold;
   line-height: 1.4;
   cursor: url('/win-95-98/hand.cur'), pointer;
-  transition: all 0.1s;
+  transition: background-size 0.12s steps(5), color 0.12s, transform 0.1s, box-shadow 0.1s;
   text-transform: uppercase;
   text-decoration: none;
   display: inline-block;
@@ -121,7 +163,7 @@ button:active, .btn:active {
 }
 
 button:hover, .btn:hover {
-  background: var(--fg);
+  background-size: 100% 100%;
   color: var(--bg);
 }
 
@@ -170,7 +212,7 @@ nav a::before { content: "> "; }
   display: inline-block;
   width: 12px;
   height: 1.2em;
-  background-color: var(--fg);
+  background-color: var(--accent);
   vertical-align: middle;
   animation: blink 1s step-end infinite;
 }

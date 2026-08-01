@@ -259,7 +259,7 @@ onMounted(() => nextTick(() => {
 }
 .article-content :deep(h2::before) {
   content: ">> ";
-  color: var(--muted);
+  color: var(--accent);
 }
 
 .article-content :deep(h3) {
@@ -269,7 +269,7 @@ onMounted(() => nextTick(() => {
 }
 .article-content :deep(h3::before) {
   content: "# ";
-  color: var(--muted);
+  color: var(--accent);
 }
 
 .article-content :deep(p) {
@@ -298,12 +298,11 @@ onMounted(() => nextTick(() => {
 }
 
 .article-content :deep(blockquote) {
-  border-left: 4px solid var(--border);
+  border-left: 4px solid var(--accent);
   padding: 1rem 1rem 1rem 1.5rem;
   margin: 2rem 0;
   color: var(--muted);
   background: rgba(128, 128, 128, 0.05);
-  font-style: italic;
 }
 
 .article-content :deep(code) {
