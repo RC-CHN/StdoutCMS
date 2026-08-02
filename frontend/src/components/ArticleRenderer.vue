@@ -220,14 +220,62 @@ function initCollapsibles(root: HTMLElement) {
   })
 }
 
+// ---- code block copy button ----
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    // fallback for non-secure contexts
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    let ok = false
+    try { ok = document.execCommand('copy') } catch { ok = false }
+    ta.remove()
+    return ok
+  }
+}
+
+function initCopyButtons(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>('pre').forEach(pre => {
+    if ((pre as any).__copyInited) return
+    ;(pre as any).__copyInited = true
+
+    const langBar = pre.querySelector<HTMLElement>('.code-lang')
+    const code = pre.querySelector<HTMLElement>('code')
+    if (!langBar || !code) return
+
+    const btn = document.createElement('span')
+    btn.className = 'md-copy-btn'
+    btn.textContent = '[COPY]'
+    langBar.appendChild(btn)
+
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const ok = await copyText(code.innerText)
+      btn.textContent = ok ? '[ OK ]' : '[FAIL]'
+      btn.classList.toggle('is-copied', ok)
+      setTimeout(() => {
+        btn.textContent = '[COPY]'
+        btn.classList.remove('is-copied')
+      }, 1500)
+    })
+  })
+}
+
 watch(html, () => nextTick(() => {
   const el = document.querySelector('.article-content') as HTMLElement | null
-  if (el) { initPlayers(el); initCollapsibles(el) }
+  if (el) { initPlayers(el); initCollapsibles(el); initCopyButtons(el) }
 }))
 
 onMounted(() => nextTick(() => {
   const el = document.querySelector('.article-content') as HTMLElement | null
-  if (el) { initPlayers(el); initCollapsibles(el) }
+  if (el) { initPlayers(el); initCollapsibles(el); initCopyButtons(el) }
 }))
 </script>
 
@@ -324,12 +372,38 @@ onMounted(() => nextTick(() => {
 }
 
 .article-content :deep(.code-lang) {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
   border-bottom: 2px dashed var(--border);
   padding-bottom: 5px;
   margin-bottom: 10px;
   font-size: 0.8rem;
   color: var(--muted);
   text-transform: uppercase;
+}
+
+.article-content :deep(.md-copy-btn) {
+  color: var(--muted);
+  font-weight: bold;
+  white-space: nowrap;
+  user-select: none;
+  cursor: url('/win-95-98/hand.cur'), pointer;
+}
+
+.article-content :deep(.md-copy-btn:hover) {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.article-content :deep(.md-copy-btn.is-copied) {
+  color: var(--accent);
+}
+
+.article-content :deep(.md-copy-btn.is-copied:hover) {
+  background: var(--accent);
+  color: var(--accent-fg);
 }
 
 .article-content :deep(pre code) {

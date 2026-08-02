@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed, ref } from 'vue'
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import TerminalHeader from './components/TerminalHeader.vue'
 import TerminalFooter from './components/TerminalFooter.vue'
@@ -57,6 +57,25 @@ const listingMode = computed<'root' | 'articles'>(() =>
 const activeArticleSlug = computed(() =>
   route.name === 'article' ? (route.params.slug as string) : undefined
 )
+
+/* fake-log page transition */
+const navLog = ref<string[] | null>(null)
+let navTimer: number | undefined
+
+// play once per section — first visit gets the boot log, later
+// navigations within/back to it just fade in without the flicker
+const seenSections = new Set<string>()
+
+watch(() => route.name, (name) => {
+  const key = String(name ?? 'home')
+  if (seenSections.has(key)) return
+  seenSections.add(key)
+  if (navTimer) clearTimeout(navTimer)
+  navLog.value = [`$ cd ${route.fullPath}`, 'fetching page...', '[ OK ]']
+  navTimer = window.setTimeout(() => { navLog.value = null }, 550)
+})
+
+onUnmounted(() => { if (navTimer) clearTimeout(navTimer) })
 </script>
 
 <template>
@@ -83,7 +102,17 @@ const activeArticleSlug = computed(() =>
       </aside>
 
       <main class="main-content" @click="closeSidebar">
-        <div :key="route.fullPath" class="page-wrapper">
+        <div v-if="navLog" class="nav-log">
+          <div
+            v-for="(line, i) in navLog"
+            :key="i"
+            class="nav-log-line"
+            :class="{ ok: line === '[ OK ]' }"
+            :style="{ animationDelay: `${i * 0.12}s` }"
+          >{{ line }}</div>
+          <span class="cursor" />
+        </div>
+        <div v-else :key="route.fullPath" class="page-wrapper">
           <router-view />
         </div>
       </main>
@@ -144,6 +173,26 @@ const activeArticleSlug = computed(() =>
 /* ---- 页面切换动画 ---- */
 .page-wrapper {
   animation: page-in 0.2s ease;
+}
+
+/* fake log transition overlay */
+.nav-log {
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.nav-log-line {
+  opacity: 0;
+  animation: log-line 0.01s step-end forwards;
+}
+
+.nav-log-line.ok {
+  color: var(--accent);
+}
+
+@keyframes log-line {
+  to { opacity: 1; }
 }
 
 @keyframes page-in {

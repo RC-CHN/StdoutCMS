@@ -6,7 +6,9 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8080',
+      // override with VITE_API_TARGET when the backend lives elsewhere
+      // (e.g. the docker-compose nginx at http://localhost:8089)
+      '/api': process.env.VITE_API_TARGET || 'http://localhost:8080',
     },
   },
 })
