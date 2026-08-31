@@ -6,14 +6,14 @@ import (
 )
 
 type Config struct {
-	AppPort         string
-	AppEnv          string
-	DatabaseURL     string
-	RedisURL        string
-	SessionSecret   string
-	SessionMaxAge   int // seconds
-	Storage         StorageConfig
-	LLM             LLMConfig
+	AppPort       string
+	AppEnv        string
+	DatabaseURL   string
+	RedisURL      string
+	SessionSecret string
+	SessionMaxAge int // seconds
+	Storage       StorageConfig
+	LLM           LLMConfig
 }
 
 type LLMConfig struct {

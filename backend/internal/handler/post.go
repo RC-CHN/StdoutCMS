@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -74,7 +75,11 @@ func GetPost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 
 		post, err := pg.GetPostBySlug(ctx, slug)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+			if errors.Is(err, store.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 		body, _ := json.Marshal(post)
@@ -91,7 +96,11 @@ func GetPostAdmin(pg *store.Postgres) gin.HandlerFunc {
 		slug := c.Param("slug")
 		post, err := pg.GetPostBySlugAdmin(ctx, slug)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+			if errors.Is(err, store.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 		c.JSON(http.StatusOK, post)
@@ -159,6 +168,10 @@ func UpdatePost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		slug := c.Param("slug")
+		if !slugRegex.MatchString(slug) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "slug must be lowercase alphanumeric with hyphens only"})
+			return
+		}
 		var po store.Post
 		if err := c.ShouldBindJSON(&po); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -171,7 +184,11 @@ func UpdatePost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 			po.ReadTime = calcReadTime(po.WordCount)
 		}
 		if err := pg.UpdatePost(ctx, slug, &po); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if errors.Is(err, store.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 		rd.InvalidatePost(ctx, slug)
@@ -184,7 +201,11 @@ func DeletePost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 		ctx := c.Request.Context()
 		slug := c.Param("slug")
 		if err := pg.DeletePost(ctx, slug); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if errors.Is(err, store.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 		rd.InvalidatePost(ctx, slug)

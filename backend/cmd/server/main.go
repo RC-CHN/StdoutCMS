@@ -141,8 +141,8 @@ func main() {
 			admin.POST("/ai/chat", handler.AdminChat(pg, rd, cfg))
 			admin.POST("/ai/generate-meta", handler.GenerateMeta(cfg))
 		}
-			admin.GET("/about", handler.GetAboutAdmin(pg))
-			admin.PUT("/about", handler.UpdateAbout(pg, rd))
+		admin.GET("/about", handler.GetAboutAdmin(pg))
+		admin.PUT("/about", handler.UpdateAbout(pg, rd))
 	}
 
 	// ---- Background scheduler ----

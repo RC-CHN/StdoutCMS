@@ -420,18 +420,15 @@ cd frontend && npm run build
 
 ## Known quirks / debt
 
-1. **No slug validation on UpdatePost** — slug format is only checked on create,
-   not update. If someone edits a post through the API directly, a bad slug
-   could persist.
-2. **Chat session has no sliding TTL** — 1-hour hard timeout from creation,
-   no renewal on activity.
-3. **Single admin user** — `admins` table supports multiple rows, but seeding
+1. **Single admin user** — `admins` table supports multiple rows, but seeding
    only creates one, and there's no admin management UI.
-4. **Thin frontend test coverage** — only the markdown parser is tested
+2. **Thin frontend test coverage** — only the markdown parser is tested
    (vitest); Vue components and composables are untested.
-5. **Markdown parser edge cases** — hand-rolled parser; deep nesting beyond
+3. **Markdown parser edge cases** — hand-rolled parser; deep nesting beyond
    one list level, tables, and reference-style links are unsupported.
-6. **Store tests missing** — PostgreSQL and Redis are tested only indirectly
+4. **Store tests missing** — PostgreSQL and Redis are tested only indirectly
    via handler/scheduler/task tests. No isolated DB tests with test fixtures.
-7. **No structured logging on frontend** — errors are mostly `console.error`
+5. **No structured logging on frontend** — errors are mostly `console.error`
    or shown as terminal-style messages.
+6. **Upload Content-Type is client-controlled** — `kindForContentType` trusts
+   the multipart header, so a mislabelled file lands in the wrong prefix.

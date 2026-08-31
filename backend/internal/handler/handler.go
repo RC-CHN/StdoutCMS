@@ -60,7 +60,11 @@ func Meta(pg *store.Postgres, llmEnabled bool) gin.HandlerFunc {
 
 func generateToken() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// crypto/rand failure means the system entropy source is broken;
+		// a predictable session token is worse than crashing.
+		panic(fmt.Sprintf("crypto/rand failed: %v", err))
+	}
 	return hex.EncodeToString(b)
 }
 

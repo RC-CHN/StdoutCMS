@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -52,7 +53,11 @@ func GetProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 
 		project, err := pg.GetProject(ctx, id)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+			if errors.Is(err, store.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 		body, _ := json.Marshal(project)
@@ -106,7 +111,11 @@ func UpdateProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 			return
 		}
 		if err := pg.UpdateProject(ctx, id, &pr); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if errors.Is(err, store.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 		rd.InvalidateProjects(ctx)
@@ -123,7 +132,11 @@ func DeleteProject(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 			return
 		}
 		if err := pg.DeleteProject(ctx, id); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if errors.Is(err, store.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 		rd.InvalidateProjects(ctx)

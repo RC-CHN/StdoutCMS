@@ -2,11 +2,17 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// ErrNotFound is returned when a query matches or affects no rows.
+// Handlers map it to HTTP 404; anything else is a genuine storage error.
+var ErrNotFound = errors.New("record not found")
 
 type Postgres struct {
 	pool *pgxpool.Pool
@@ -95,6 +101,9 @@ func (p *Postgres) GetPostBySlug(ctx context.Context, slug string) (*Post, error
 	`, slug).Scan(&po.Slug, &po.Title, &po.Content, &po.Excerpt,
 		&po.Tags, &po.Author, &po.WordCount, &po.ReadTime, &po.CreatedAt, &po.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &po, nil
@@ -109,6 +118,9 @@ func (p *Postgres) GetPostBySlugAdmin(ctx context.Context, slug string) (*Post, 
 	`, slug).Scan(&po.Slug, &po.Title, &po.Content, &po.Excerpt,
 		&po.Tags, &po.Author, &po.WordCount, &po.ReadTime, &po.Published, &po.CreatedAt, &po.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &po, nil
@@ -158,17 +170,29 @@ func (p *Postgres) CreatePost(ctx context.Context, po *Post) error {
 }
 
 func (p *Postgres) UpdatePost(ctx context.Context, slug string, po *Post) error {
-	_, err := p.pool.Exec(ctx, `
+	tag, err := p.pool.Exec(ctx, `
 		UPDATE posts
 		SET title=$1, content=$2, excerpt=$3, tags=$4::text[], word_count=$5, read_time=$6, published=$7, updated_at=now()
 		WHERE slug=$8
 	`, po.Title, po.Content, po.Excerpt, po.Tags, po.WordCount, po.ReadTime, po.Published, slug)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (p *Postgres) DeletePost(ctx context.Context, slug string) error {
-	_, err := p.pool.Exec(ctx, `DELETE FROM posts WHERE slug = $1`, slug)
-	return err
+	tag, err := p.pool.Exec(ctx, `DELETE FROM posts WHERE slug = $1`, slug)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // ---- Projects ----
@@ -210,6 +234,9 @@ func (p *Postgres) GetProject(ctx context.Context, id int) (*Project, error) {
 		FROM projects WHERE id=$1
 	`, id).Scan(&pr.ID, &pr.Name, &pr.Description, &pr.Lang, &pr.Status, &pr.URL, &pr.SortOrder)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &pr, nil
@@ -224,16 +251,28 @@ func (p *Postgres) CreateProject(ctx context.Context, pr *Project) error {
 }
 
 func (p *Postgres) UpdateProject(ctx context.Context, id int, pr *Project) error {
-	_, err := p.pool.Exec(ctx, `
+	tag, err := p.pool.Exec(ctx, `
 		UPDATE projects SET name=$1, description=$2, lang=$3, status=$4, url=$5, sort_order=$6
 		WHERE id=$7
 	`, pr.Name, pr.Description, pr.Lang, pr.Status, pr.URL, pr.SortOrder, id)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (p *Postgres) DeleteProject(ctx context.Context, id int) error {
-	_, err := p.pool.Exec(ctx, `DELETE FROM projects WHERE id=$1`, id)
-	return err
+	tag, err := p.pool.Exec(ctx, `DELETE FROM projects WHERE id=$1`, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // GetAllContent returns the content of every post (including drafts).
@@ -311,6 +350,9 @@ func (p *Postgres) GetAbout(ctx context.Context) (*About, error) {
 		SELECT title, content, updated_at FROM about ORDER BY id LIMIT 1
 	`).Scan(&a.Title, &a.Content, &a.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &a, nil

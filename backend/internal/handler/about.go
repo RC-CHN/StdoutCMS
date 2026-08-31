@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -23,7 +24,11 @@ func GetAbout(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 
 		a, err := pg.GetAbout(ctx)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "about not found"})
+			if errors.Is(err, store.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "about not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 		body, _ := json.Marshal(a)
@@ -39,7 +44,11 @@ func GetAboutAdmin(pg *store.Postgres) gin.HandlerFunc {
 		ctx := c.Request.Context()
 		a, err := pg.GetAbout(ctx)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "about not found"})
+			if errors.Is(err, store.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "about not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 		c.JSON(http.StatusOK, a)
