@@ -65,7 +65,7 @@ func (p *Postgres) ListPosts(ctx context.Context, page, size int) ([]Post, int, 
 
 	offset := (page - 1) * size
 	rows, err := p.pool.Query(ctx, `
-		SELECT slug, title, content, excerpt, tags, author, word_count, read_time, created_at
+		SELECT slug, title, content, excerpt, tags, author, word_count, read_time, published, created_at, updated_at
 		FROM posts
 		WHERE published = true
 		ORDER BY created_at DESC
@@ -80,7 +80,7 @@ func (p *Postgres) ListPosts(ctx context.Context, page, size int) ([]Post, int, 
 	for rows.Next() {
 		var po Post
 		err := rows.Scan(&po.Slug, &po.Title, &po.Content, &po.Excerpt,
-			&po.Tags, &po.Author, &po.WordCount, &po.ReadTime, &po.CreatedAt)
+			&po.Tags, &po.Author, &po.WordCount, &po.ReadTime, &po.Published, &po.CreatedAt, &po.UpdatedAt)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -95,11 +95,11 @@ func (p *Postgres) ListPosts(ctx context.Context, page, size int) ([]Post, int, 
 func (p *Postgres) GetPostBySlug(ctx context.Context, slug string) (*Post, error) {
 	var po Post
 	err := p.pool.QueryRow(ctx, `
-		SELECT slug, title, content, excerpt, tags, author, word_count, read_time, created_at, updated_at
+		SELECT slug, title, content, excerpt, tags, author, word_count, read_time, published, created_at, updated_at
 		FROM posts
 		WHERE slug = $1 AND published = true
 	`, slug).Scan(&po.Slug, &po.Title, &po.Content, &po.Excerpt,
-		&po.Tags, &po.Author, &po.WordCount, &po.ReadTime, &po.CreatedAt, &po.UpdatedAt)
+		&po.Tags, &po.Author, &po.WordCount, &po.ReadTime, &po.Published, &po.CreatedAt, &po.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
