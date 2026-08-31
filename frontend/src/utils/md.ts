@@ -34,6 +34,12 @@ function sanitizeUrl(url: string): string {
   return u
 }
 
+// slugHeading derives an anchor id from heading text: lowercase, unicode
+// letters and digits kept (CJK-friendly), other runs collapsed to "-".
+function slugHeading(text: string): string {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'section'
+}
+
 // ---- media type detection ----
 
 type MediaType = 'image' | 'audio' | 'video' | 'file'
@@ -194,8 +200,9 @@ function inline(raw: string, mobile = false): string {
   // inline code spans — highest precedence, content stays fully literal
   text = text.replace(/`([^`\n]+)`/g, (_, code: string) => hold(`<code>${code}</code>`))
 
-  // backslash escapes (code spans already stashed, so they are unaffected)
-  text = text.replace(/\\([\\`*_[\]()>#+.!-])/g, (_, ch: string) => hold(escapeHtml(ch)))
+  // backslash escapes (code spans already stashed, so they are unaffected).
+  // "|" is included so table cells can escape a literal pipe as "\|".
+  text = text.replace(/\\([\\`*_[\]()>#+.!|-])/g, (_, ch: string) => hold(escapeHtml(ch)))
 
   // images / media embeds
   text = text.replace(new RegExp(String.raw`!\[([^\]]*)\]\((${URL_BODY})\)`, 'g'),
@@ -249,32 +256,87 @@ const RE_HR = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/
 // matches the start of any block construct; used to terminate paragraphs
 const RE_BLOCK_START = /^(#{1,6}\s|>|`{3,}|~{3,}|\s*([-*]|\d{1,9}\.)\s|\s*(-{3,}|\*{3,}|_{3,})\s*$)/
 
+// ---- tables (GFM) ----
+
+// A delimiter row: optional border pipes, one or more ":---:" style cells.
+// Both rows must also contain a pipe, so a plain "---" stays a thematic break.
+const RE_TABLE_DELIM = /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/
+
+// tableStartsAt reports whether lines[j] is the header of a table: it holds
+// a pipe, the next line is a delimiter row, and both split into the same
+// number of cells.
+function tableStartsAt(lines: string[], j: number): boolean {
+  if (j + 1 >= lines.length) return false
+  const header = lines[j]
+  const delim = lines[j + 1]
+  return header.includes('|')
+    && delim.includes('|')
+    && RE_TABLE_DELIM.test(delim)
+    && splitCells(header).length === splitCells(delim).length
+}
+
+// splitCells splits a table row on unescaped pipes and drops the optional
+// border pipes. "\|" stays inside the cell (unescaped later by inline()).
+function splitCells(row: string): string[] {
+  let s = row.trim()
+  if (s.startsWith('|')) s = s.slice(1)
+  if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1)
+  return s.split(/(?<!\\)\|/).map(c => c.trim())
+}
+
+// alignOf maps a delimiter cell to a text-align value ("" = left default).
+function alignOf(cell: string): string {
+  const l = cell.startsWith(':')
+  const r = cell.endsWith(':')
+  if (l && r) return 'center'
+  if (r) return 'right'
+  return ''
+}
+
+function renderTable(header: string[], aligns: string[], rows: string[][], mobile: boolean): string {
+  const attr = (a: string) => (a ? ` style="text-align:${a}"` : '')
+  let html = '<table class="md-table"><thead><tr>'
+  header.forEach((cell, k) => { html += `<th${attr(aligns[k])}>${inline(cell, mobile)}</th>` })
+  html += '</tr></thead><tbody>'
+  for (const row of rows) {
+    // pad short rows so every <tr> matches the header column count
+    while (row.length < header.length) row.push('')
+    html += '<tr>'
+    row.forEach((cell, k) => { html += `<td${attr(aligns[k])}>${inline(cell, mobile)}</td>` })
+    html += '</tr>'
+  }
+  return html + '</tbody></table>'
+}
+
 interface ListItem {
-  sub: boolean     // indented 2+ spaces → nested list item
+  level: number    // 0-based nesting depth (indent / 2 spaces, capped)
   ordered: boolean // "1." marker vs "-"/"*"
+  task: boolean    // "- [ ]" / "- [x]" checkbox item
   html: string
 }
 
-// renderList emits <ul>/<ol> with one level of nesting. Nested lists are
-// placed inside the preceding <li>, keeping the output valid HTML.
+// renderList emits nested <ul>/<ol> at arbitrary depth. A run of items
+// deeper than the current one is rendered inside the preceding <li>,
+// keeping the output valid HTML.
 function renderList(items: ListItem[]): string {
-  const tagOf = (ordered: boolean): string => (ordered ? 'ol' : 'ul')
-  const rootTag = tagOf(items[0].ordered)
-  let html = `<${rootTag}>`
-  let subTag: string | null = null
-
-  for (const it of items) {
-    if (it.sub && subTag === null && html.endsWith('</li>')) {
-      subTag = tagOf(it.ordered)
-      html = html.slice(0, -'</li>'.length) + `<${subTag}>`
-    } else if (!it.sub && subTag !== null) {
-      html += `</${subTag}></li>`
-      subTag = null
+  const render = (start: number, level: number): { html: string; next: number } => {
+    const tag = items[start].ordered ? 'ol' : 'ul'
+    let html = `<${tag}>`
+    let i = start
+    while (i < items.length && items[i].level === level) {
+      const li = `<li${items[i].task ? ' class="md-task"' : ''}>${items[i].html}`
+      if (i + 1 < items.length && items[i + 1].level > level) {
+        const sub = render(i + 1, items[i + 1].level)
+        html += li + sub.html + '</li>'
+        i = sub.next
+      } else {
+        html += li + '</li>'
+        i++
+      }
     }
-    html += `<li>${it.html}</li>`
+    return { html: html + `</${tag}>`, next: i }
   }
-  if (subTag !== null) html += `</${subTag}></li>`
-  return html + `</${rootTag}>`
+  return render(0, items[0].level).html
 }
 
 // renderFlow joins wrapped lines (soft break → space, two trailing spaces →
@@ -293,6 +355,7 @@ function renderFlow(ls: string[], mobile: boolean): string {
 export function parseMarkdown(src: string, mobile = false): string {
   const lines = src.replace(/\r\n?/g, '\n').split('\n')
   const out: string[] = []
+  const usedIds = new Map<string, number>()
   let i = 0
 
   while (i < lines.length) {
@@ -324,7 +387,16 @@ export function parseMarkdown(src: string, mobile = false): string {
     const h = line.match(RE_HEADING)
     if (h) {
       const tag = h[1].length <= 2 ? 'h2' : 'h3'
-      out.push(`<${tag}>${inline(h[2], mobile)}</${tag}>`)
+      // anchor id from plain text (link labels unwrapped, md markers stripped)
+      const plain = h[2]
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/[`*~]/g, '')
+        .trim()
+      let id = slugHeading(plain)
+      const n = (usedIds.get(id) ?? 0) + 1
+      usedIds.set(id, n)
+      if (n > 1) id = `${id}-${n}`
+      out.push(`<${tag} id="${id}">${inline(h[2], mobile)}</${tag}>`)
       i++
       continue
     }
@@ -347,27 +419,51 @@ export function parseMarkdown(src: string, mobile = false): string {
       continue
     }
 
-    // lists: "- "/"* " bullets and "1." ordered, one level of nesting
+    // lists: "- "/"* " bullets and "1." ordered, nested by 2-space indents;
+    // "- [ ]"/"- [x]" prefixes become task-list checkboxes
     if (RE_LIST_ITEM.test(line)) {
       const items: ListItem[] = []
+      let prevLevel = -1
       while (i < lines.length) {
         const m = lines[i].match(RE_LIST_ITEM)
         if (!m) break
+        const indent = m[1].replace(/\t/g, '  ').length
+        const level = Math.min(Math.floor(indent / 2), prevLevel + 1) // no level jumps
+        const task = m[3].match(/^\[([ xX])\]\s+(.*)$/)
         items.push({
-          sub: m[1].length >= 2,
+          level,
           ordered: m[2] !== '-' && m[2] !== '*',
-          html: inline(m[3], mobile),
+          task: !!task,
+          html: task
+            ? `<input type="checkbox" disabled${task[1] === ' ' ? '' : ' checked'}> ${inline(task[2], mobile)}`
+            : inline(m[3], mobile),
         })
+        prevLevel = level
         i++
       }
       out.push(renderList(items))
       continue
     }
 
-    // paragraph — supports hard breaks (2 trailing spaces → <br>)
+    // GFM table: header row, delimiter row, then pipe-delimited body rows
+    if (tableStartsAt(lines, i)) {
+      const header = splitCells(lines[i])
+      const aligns = splitCells(lines[i + 1]).map(alignOf)
+      i += 2
+      const rows: string[][] = []
+      while (i < lines.length && lines[i].trim() && lines[i].includes('|') && !RE_BLOCK_START.test(lines[i])) {
+        rows.push(splitCells(lines[i]))
+        i++
+      }
+      out.push(renderTable(header, aligns, rows, mobile))
+      continue
+    }
+
+    // paragraph — supports hard breaks (2 trailing spaces → <br>);
+    // a table header (pipe line + delimiter row) interrupts the paragraph
     const p = [line]
     i++
-    while (i < lines.length && lines[i].trim() && !RE_BLOCK_START.test(lines[i])) {
+    while (i < lines.length && lines[i].trim() && !RE_BLOCK_START.test(lines[i]) && !tableStartsAt(lines, i)) {
       p.push(lines[i])
       i++
     }

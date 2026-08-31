@@ -254,10 +254,12 @@ StdoutCMS/
   ArticleView/App.vue swap in Mobile* components when mobile; desktop keeps
   ArticleRenderer/ChatWidget.
 - Markdown parser: hand-written in `utils/md.ts`. Supports h1–h6 (rendered as
-  h2/h3), code fences (``` and ~~~), blockquotes, unordered/ordered lists
-  (one nesting level), bold, italic, strikethrough, inline code, links,
-  images/media embeds, horizontal rules, backslash escapes and bare-URL
-  autolinks. No external markdown library.
+  h2/h3, each with a deduplicated CJK-friendly anchor id), code fences
+  (``` and ~~~), blockquotes, unordered/ordered lists nested to any depth
+  (2-space indents), GFM tables (column alignment via `:--`/`:-:`/`--:`,
+  escaped `\|` pipes), GFM task lists (`- [ ]`/`- [x]`), bold, italic,
+  strikethrough, inline code, links, images/media embeds, horizontal rules,
+  backslash escapes and bare-URL autolinks. No external markdown library.
   Inline parsing is placeholder-based: text is escaped first, each construct
   (code spans, media, links, autolinks) is replaced by a `\x00N\x00` token,
   emphasis runs last, then tokens are restored. Link/media URLs are
@@ -424,8 +426,8 @@ cd frontend && npm run build
    only creates one, and there's no admin management UI.
 2. **Thin frontend test coverage** — only the markdown parser is tested
    (vitest); Vue components and composables are untested.
-3. **Markdown parser edge cases** — hand-rolled parser; deep nesting beyond
-   one list level, tables, and reference-style links are unsupported.
+3. **Markdown parser edge cases** — hand-rolled parser; reference-style
+   links, footnotes, setext headings and syntax highlighting are unsupported.
 4. **Store tests missing** — PostgreSQL and Redis are tested only indirectly
    via handler/scheduler/task tests. No isolated DB tests with test fixtures.
 5. **No structured logging on frontend** — errors are mostly `console.error`

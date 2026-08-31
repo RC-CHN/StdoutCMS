@@ -353,6 +353,45 @@ onMounted(() => nextTick(() => {
   background: rgba(128, 128, 128, 0.05);
 }
 
+/* ---- GFM tables ---- */
+
+.article-content :deep(.md-table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 2rem 0;
+  font-size: 0.95em;
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.article-content :deep(.md-table th),
+.article-content :deep(.md-table td) {
+  border: 1px solid var(--border);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.article-content :deep(.md-table th) {
+  background: var(--fg);
+  color: var(--bg);
+  font-weight: bold;
+}
+
+.article-content :deep(.md-table tbody tr:nth-child(even)) {
+  background: rgba(128, 128, 128, 0.07);
+}
+
+/* ---- GFM task lists ---- */
+
+.article-content :deep(ul li.md-task) {
+  list-style: none;
+}
+
+.article-content :deep(li.md-task input[type='checkbox']) {
+  accent-color: var(--accent);
+  margin-right: 0.35em;
+}
+
 .article-content :deep(code) {
   background: var(--fg);
   color: var(--bg);

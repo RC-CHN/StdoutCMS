@@ -229,6 +229,42 @@ onMounted(() => {
   background: rgba(128, 128, 128, 0.05);
 }
 
+/* ---- GFM tables (horizontally scrollable on small screens) ---- */
+
+.article-content :deep(.md-table) {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+  font-size: 0.85rem;
+  border: 2px solid var(--border);
+}
+
+.article-content :deep(.md-table th),
+.article-content :deep(.md-table td) {
+  border: 1px solid var(--border);
+  padding: 0.4em 0.6em;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.article-content :deep(.md-table th) {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+/* ---- GFM task lists ---- */
+
+.article-content :deep(ul li.md-task) {
+  list-style: none;
+}
+
+.article-content :deep(li.md-task input[type='checkbox']) {
+  accent-color: var(--accent);
+  margin-right: 0.3em;
+}
+
 .article-content :deep(code) {
   background: var(--fg);
   color: var(--bg);

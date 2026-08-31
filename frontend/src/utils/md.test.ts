@@ -29,8 +29,8 @@ const exact: Array<[string, string, string]> = [
   ['backslash escape', '\\*literal\\*', '<p>*literal*</p>'],
 
   // --- block parsing ---
-  ['h1 maps to h2', '# Title', '<h2>Title</h2>'],
-  ['h3 stays h3', '### Sub', '<h3>Sub</h3>'],
+  ['h1 maps to h2', '# Title', '<h2 id="title">Title</h2>'],
+  ['h3 stays h3', '### Sub', '<h3 id="sub">Sub</h3>'],
   ['blockquote soft break joins', '> line one\n> line two',
     '<blockquote>line one line two</blockquote>'],
   ['blockquote hard break', '> line one  \n> line two',
@@ -68,7 +68,7 @@ const exact: Array<[string, string, string]> = [
   ['list item with inline format', '- **bold** item',
     '<ul><li><strong>bold</strong> item</li></ul>'],
   ['blockquote without space', '>quote', '<blockquote>quote</blockquote>'],
-  ['heading with inline code', '## `ls` command', '<h2><code>ls</code> command</h2>'],
+  ['heading with inline code', '## `ls` command', '<h2 id="ls-command"><code>ls</code> command</h2>'],
   ['unclosed fence consumes to eof', '```\ncode',
     '<pre><div class="code-lang">code</div><code>code</code></pre>'],
   ['unmatched bold stays literal', '**broken', '<p>**broken</p>'],
@@ -77,6 +77,49 @@ const exact: Array<[string, string, string]> = [
     '<p><a href="https://x.com"><code>code</code></a></p>'],
   ['ordered nested in unordered', '- a\n  1. x\n- b',
     '<ul><li>a<ol><li>x</li></ol></li><li>b</li></ul>'],
+
+  // --- tables (GFM) ---
+  ['table basic', '| a | b |\n|---|---|\n| 1 | 2 |',
+    '<table class="md-table"><thead><tr><th>a</th><th>b</th></tr></thead>'
+    + '<tbody><tr><td>1</td><td>2</td></tr></tbody></table>'],
+  ['table without border pipes', 'a | b\n--- | ---\n1 | 2',
+    '<table class="md-table"><thead><tr><th>a</th><th>b</th></tr></thead>'
+    + '<tbody><tr><td>1</td><td>2</td></tr></tbody></table>'],
+  ['table alignment', '| l | c | r |\n|:--|:-:|--:|\n| 1 | 2 | 3 |',
+    '<table class="md-table"><thead><tr><th>l</th>'
+    + '<th style="text-align:center">c</th><th style="text-align:right">r</th></tr></thead>'
+    + '<tbody><tr><td>1</td><td style="text-align:center">2</td>'
+    + '<td style="text-align:right">3</td></tr></tbody></table>'],
+  ['table cell inline formatting', '| **k** |\n|---|\n| `v` |',
+    '<table class="md-table"><thead><tr><th><strong>k</strong></th></tr></thead>'
+    + '<tbody><tr><td><code>v</code></td></tr></tbody></table>'],
+  ['table interrupts paragraph', 'intro\n| a |\n|---|\n| 1 |',
+    '<p>intro</p>\n<table class="md-table"><thead><tr><th>a</th></tr></thead>'
+    + '<tbody><tr><td>1</td></tr></tbody></table>'],
+  ['table padded cells', '| a | b |\n|---|---|\n| 1 |',
+    '<table class="md-table"><thead><tr><th>a</th><th>b</th></tr></thead>'
+    + '<tbody><tr><td>1</td><td></td></tr></tbody></table>'],
+  ['column mismatch is not a table', '| a | b |\n|---|\n| 1 | 2 |',
+    '<p>| a | b | |---| | 1 | 2 |</p>'],
+
+  // --- task lists (GFM) ---
+  ['task list unchecked', '- [ ] todo',
+    '<ul><li class="md-task"><input type="checkbox" disabled> todo</li></ul>'],
+  ['task list checked mixed', '- [x] done\n- [ ] later',
+    '<ul><li class="md-task"><input type="checkbox" disabled checked> done</li>'
+    + '<li class="md-task"><input type="checkbox" disabled> later</li></ul>'],
+  ['bracket link is not a task', '- [link](https://x.com)',
+    '<ul><li><a href="https://x.com">link</a></li></ul>'],
+
+  // --- deep list nesting ---
+  ['two-level nested list', '- a\n  - a1\n    - a2\n- b',
+    '<ul><li>a<ul><li>a1<ul><li>a2</li></ul></li></ul></li><li>b</li></ul>'],
+  ['indent jump collapses one level', '- a\n      - deep\n- b',
+    '<ul><li>a<ul><li>deep</li></ul></li><li>b</li></ul>'],
+
+  // --- heading anchors ---
+  ['duplicate headings numbered', '# Same\n\n# Same',
+    '<h2 id="same">Same</h2>\n<h2 id="same-2">Same</h2>'],
 ]
 
 // Substring checks for cases where full-figure HTML is noisy to assert.
@@ -102,6 +145,8 @@ const contains: Array<[string, string, string]> = [
     'href="https://x.com/?a=1&amp;b=2"'],
   ['image with empty alt', '![](https://cdn.x.com/a.png)',
     '<img src="https://cdn.x.com/a.png" alt="">'],
+  ['cjk heading id', '## 中文标题', '<h2 id="中文标题">中文标题</h2>'],
+  ['escaped pipe in table cell', '| a \\| b |\n|---|\n| 1 |', '<th>a | b</th>'],
 ]
 
 describe('parseMarkdown', () => {
