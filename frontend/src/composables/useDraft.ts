@@ -1,7 +1,6 @@
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 
-const DRAFT_KEY = 'blog_editor_draft'
-
+const LEGACY_KEY = 'blog_editor_draft'
 export interface Draft {
   title: string
   slug: string
@@ -11,65 +10,65 @@ export interface Draft {
   savedAt: string
 }
 
-const emptyDraft: Draft = {
-  title: '',
-  slug: '',
-  tags: '',
-  excerpt: '',
-  content: '',
-  savedAt: '',
-}
+export const emptyDraft = (): Draft => ({ title: '', slug: '', tags: '', excerpt: '', content: '', savedAt: '' })
+export const draftKey = (slug?: string) => `${LEGACY_KEY}:${slug ? `post:${slug}` : 'new'}`
+export const draftText = (draft: Draft) => JSON.stringify([draft.title, draft.slug, draft.tags, draft.excerpt, draft.content])
 
-export function useDraft() {
-  const draft = ref<Draft>({ ...emptyDraft })
+// Reading a backup never overwrites the editor; the author chooses whether to restore it.
+export function useDraft(slug?: string) {
+  const key = draftKey(slug)
+  const draft = ref<Draft>(emptyDraft())
   const lastSaved = ref('')
+  const storageError = ref('')
 
-  function load() {
+  function load(): Draft | null {
     try {
-      const raw = localStorage.getItem(DRAFT_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as Draft
-        draft.value = parsed
-        lastSaved.value = parsed.savedAt
+      const current = localStorage.getItem(key)
+      const raw = current || localStorage.getItem(LEGACY_KEY)
+      if (!raw) return null
+      const value = JSON.parse(raw)
+      if (!value || Object.keys(emptyDraft()).some(field => typeof value[field] !== 'string')) return null
+      if (!current && slug && value.slug !== slug) return null
+      if (!current) {
+        localStorage.setItem(key, raw)
+        localStorage.removeItem(LEGACY_KEY)
       }
+      return value as Draft
     } catch {
-      // ignore
+      storageError.value = 'Local backup is unavailable. Save to the server before leaving.'
+      return null
     }
   }
 
-  function save() {
-    const now = new Date().toISOString()
-    draft.value.savedAt = now
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft.value))
-    lastSaved.value = now
-  }
-
-  function clear() {
-    draft.value = { ...emptyDraft }
-    lastSaved.value = ''
-    localStorage.removeItem(DRAFT_KEY)
-  }
-
-  function restoreFromPost(post: { title: string; slug: string; tags: string[]; excerpt: string; content: string }) {
-    draft.value = {
-      title: post.title,
-      slug: post.slug,
-      tags: post.tags.join(', '),
-      excerpt: post.excerpt,
-      content: post.content,
-      savedAt: '',
+  function save(): boolean {
+    try {
+      const savedAt = new Date().toISOString()
+      localStorage.setItem(key, JSON.stringify({ ...draft.value, savedAt }))
+      lastSaved.value = savedAt
+      storageError.value = ''
+      return true
+    } catch {
+      storageError.value = 'Local backup failed. Save to the server before leaving.'
+      return false
     }
   }
 
-  onMounted(load)
-
-  // auto-save on change (debounced by caller)
-  return {
-    draft,
-    lastSaved,
-    save,
-    clear,
-    load,
-    restoreFromPost,
+  function discard(): boolean {
+    try {
+      localStorage.removeItem(key)
+      lastSaved.value = ''
+      storageError.value = ''
+      return true
+    } catch {
+      storageError.value = 'Could not remove the local backup.'
+      return false
+    }
   }
+
+  function restore(value: Draft) {
+    draft.value = { ...value }
+    lastSaved.value = value.savedAt
+  }
+
+  return { draft, lastSaved, storageError, load, save, discard, restore }
 }
