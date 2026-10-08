@@ -20,6 +20,7 @@ const { isLoggedIn } = useAuth()
 type DirEntry = {
   date: string
   name: string
+  slug?: string
   suffix: string
   to: string
   isActive: boolean
@@ -38,9 +39,10 @@ const entries = computed<DirEntry[]>(() => {
     ]
     for (const post of props.posts ?? []) {
       result.push({
-        date: post.createdAt || '',
-        name: post.slug,
-        suffix: '.md',
+        date: post.createdAt?.slice(0, 10) || '',
+        name: post.title,
+        slug: post.slug + '.md',
+        suffix: '',
         to: `/article/${post.slug}`,
         isActive: props.activeSlug === post.slug,
       })
@@ -50,21 +52,21 @@ const entries = computed<DirEntry[]>(() => {
 
   const base: DirEntry[] = [
     {
-      date: '2023-10-25',
+      date: '',
       name: 'articles',
       suffix: '/',
       to: '/',
       isActive: route.name === 'home' || route.name === 'article',
     },
     {
-      date: '2023-10-01',
+      date: '',
       name: 'about',
       suffix: '/',
       to: '/about',
       isActive: route.name === 'about',
     },
     {
-      date: '2023-09-15',
+      date: '',
       name: 'projects',
       suffix: '/',
       to: '/projects',
@@ -79,7 +81,7 @@ const entries = computed<DirEntry[]>(() => {
       name: 'admin',
       suffix: '/',
       to: '/admin',
-      isActive: !!route.name?.toString().startsWith('admin-'),
+      isActive: !!route.name?.toString().startsWith('admin'),
     })
   }
 
@@ -91,13 +93,14 @@ const entries = computed<DirEntry[]>(() => {
   <div class="fs-listing">
     <RouterLink
       v-for="entry in entries"
-      :key="entry.name"
+      :key="entry.to"
       :to="entry.to"
       class="fs-entry"
       :class="{ 'fs-active': entry.isActive }"
       @click="$emit('navigate')"
     >
       <span class="fs-name">{{ entry.name }}<span class="fs-suffix">{{ entry.suffix }}</span></span>
+      <span v-if="entry.slug" class="fs-date fs-slug">{{ entry.slug }}</span>
       <span class="fs-date">{{ entry.date }}</span>
     </RouterLink>
   </div>
@@ -116,7 +119,7 @@ const entries = computed<DirEntry[]>(() => {
 .fs-entry {
   display: flex;
   flex-direction: column;
-  padding: 3px 6px;
+  padding: 8px 6px;
   text-decoration: none;
   color: var(--fg);
   border: 1px solid transparent;
@@ -154,6 +157,7 @@ const entries = computed<DirEntry[]>(() => {
   color: var(--muted);
   line-height: 1.3;
 }
+.fs-slug { overflow-wrap: anywhere; }
 
 .fs-entry:hover .fs-date,
 .fs-active .fs-date {

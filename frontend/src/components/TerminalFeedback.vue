@@ -46,7 +46,7 @@ const prefix = () => {
 
 <template>
   <Transition name="term-fade">
-    <div v-if="visible && message" class="term-feedback" :class="'term-' + type">
+    <div v-if="visible && message" class="term-feedback" :class="'term-' + type" :role="type === 'err' ? 'alert' : 'status'">
       <span class="term-prefix">{{ prefix() }}</span>
       <span class="term-msg">{{ message }}</span>
       <span class="term-cursor">_</span>
@@ -62,9 +62,8 @@ const prefix = () => {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .term-prefix {
@@ -78,11 +77,10 @@ const prefix = () => {
 
 .term-msg {
   color: var(--fg);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
 }
 
-.term-err .term-msg { color: #ff6666; }
+.term-err .term-msg { color: var(--danger); }
 
 .term-cursor {
   color: var(--fg);

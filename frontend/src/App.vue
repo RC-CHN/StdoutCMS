@@ -1,31 +1,23 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
+import { onMounted, onUnmounted, computed, ref, watch, defineAsyncComponent, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import TerminalHeader from './components/TerminalHeader.vue'
 import TerminalFooter from './components/TerminalFooter.vue'
 import FileListing from './components/FileListing.vue'
-import ChatWidget from './components/ChatWidget.vue'
 import { fetchMeta } from './api/meta'
 import { listPosts } from './api/posts'
 import type { PostPayload } from './api/posts'
 import { useBreakpoint } from './composables/useBreakpoint'
 
+const ChatWidget = defineAsyncComponent(() => import('./components/ChatWidget.vue'))
+
 const route = useRoute()
 const { isMobile } = useBreakpoint()
 
-const THEME_KEY = 'blog_theme_pref'
 const aiEnabled = ref(false)
 const sidebarPosts = ref<PostPayload[]>([])
 
-function initTheme() {
-  const saved = localStorage.getItem(THEME_KEY)
-  if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    document.body.classList.add('dark-mode')
-  }
-}
-
 onMounted(() => {
-  initTheme()
   fetchMeta()
     .then(m => { aiEnabled.value = m.ai })
     .catch(() => { aiEnabled.value = false })
@@ -58,34 +50,32 @@ const activeArticleSlug = computed(() =>
   route.name === 'article' ? (route.params.slug as string) : undefined
 )
 
-/* fake-log page transition */
-const navLog = ref<string[] | null>(null)
-let navTimer: number | undefined
-
-// play once per section — first visit gets the boot log, later
-// navigations within/back to it just fade in without the flicker
-const seenSections = new Set<string>()
-
-watch(() => route.name, (name) => {
-  const key = String(name ?? 'home')
-  if (seenSections.has(key)) return
-  seenSections.add(key)
-  if (navTimer) clearTimeout(navTimer)
-  navLog.value = [`$ cd ${route.fullPath}`, 'fetching page...', '[ OK ]']
-  navTimer = window.setTimeout(() => { navLog.value = null }, 550)
+watch(() => route.path, closeSidebar)
+function onEscape(event: KeyboardEvent) {
+  if (event.key === 'Escape' && sidebarOpen.value) {
+    closeSidebar()
+    document.querySelector<HTMLButtonElement>('.menu-btn')?.focus()
+  }
+}
+watch(sidebarOpen, async (open) => {
+  if (open) {
+    await nextTick()
+    document.querySelector<HTMLAnchorElement>('.sidebar a')?.focus()
+  }
 })
-
-onUnmounted(() => { if (navTimer) clearTimeout(navTimer) })
+onMounted(() => window.addEventListener('keydown', onEscape))
+onUnmounted(() => window.removeEventListener('keydown', onEscape))
 </script>
 
 <template>
   <div class="app-shell">
-    <TerminalHeader @menu-click="toggleSidebar" />
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <TerminalHeader :sidebar-open="sidebarOpen" @menu-click="toggleSidebar" />
 
     <div class="app-body">
       <div class="sidebar-overlay" :class="{ open: sidebarOpen }" @click="closeSidebar" />
 
-      <aside class="sidebar" :class="{ open: sidebarOpen }">
+      <aside id="site-sidebar" class="sidebar" :class="{ open: sidebarOpen }" :inert="isMobile && !sidebarOpen" aria-label="Site navigation">
         <div class="sidebar-inner">
           <div class="prompt-line">
             <div class="prompt-path">{{ promptPath }}</div>
@@ -101,20 +91,10 @@ onUnmounted(() => { if (navTimer) clearTimeout(navTimer) })
         </div>
       </aside>
 
-      <main class="main-content" @click="closeSidebar">
-        <div v-if="navLog" class="nav-log">
-          <div
-            v-for="(line, i) in navLog"
-            :key="i"
-            class="nav-log-line"
-            :class="{ ok: line === '[ OK ]' }"
-            :style="{ animationDelay: `${i * 0.12}s` }"
-          >{{ line }}</div>
-          <span class="cursor" />
-        </div>
-        <div v-else :key="route.fullPath" class="page-wrapper">
-          <router-view />
-        </div>
+      <main id="main-content" class="main-content" tabindex="-1">
+        <router-view v-slot="{ Component }">
+          <component :is="Component" :key="route.path" />
+        </router-view>
       </main>
     </div>
 
@@ -149,7 +129,9 @@ onUnmounted(() => { if (navTimer) clearTimeout(navTimer) })
 
 .sidebar-inner {
   padding: 1.5rem 1rem;
-  max-height: calc(100vh - 100px);
+  position: sticky;
+  top: var(--header-height);
+  max-height: calc(100dvh - var(--header-height));
   overflow-y: auto;
 }
 
@@ -157,7 +139,8 @@ onUnmounted(() => { if (navTimer) clearTimeout(navTimer) })
 .main-content {
   flex: 1;
   padding: 1.5rem 1rem;
-  max-width: none;
+  min-width: 0;
+  background: var(--bg);
 }
 
 /* ---- prompt ---- */
@@ -169,42 +152,6 @@ onUnmounted(() => { if (navTimer) clearTimeout(navTimer) })
 }
 .prompt-path { color: var(--fg); }
 .prompt-cmd  { color: var(--muted); }
-
-/* ---- 页面切换动画 ---- */
-.page-wrapper {
-  animation: page-in 0.2s ease;
-}
-
-/* fake log transition overlay */
-.nav-log {
-  padding: 0.5rem 0;
-  font-size: 0.9rem;
-  font-weight: bold;
-}
-
-.nav-log-line {
-  opacity: 0;
-  animation: log-line 0.01s step-end forwards;
-}
-
-.nav-log-line.ok {
-  color: var(--accent);
-}
-
-@keyframes log-line {
-  to { opacity: 1; }
-}
-
-@keyframes page-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 /* ---- 侧边栏遮罩 ---- */
 .sidebar-overlay {
@@ -220,10 +167,12 @@ onUnmounted(() => { if (navTimer) clearTimeout(navTimer) })
     bottom: 0;
     z-index: 100;
     transform: translateX(-100%);
-    box-shadow: var(--shadow);
+    box-shadow: none;
   }
 
-  .sidebar.open { transform: translateX(0); }
+  .sidebar.open { transform: translateX(0); box-shadow: var(--shadow); }
+  .sidebar-inner { position: static; max-height: 100dvh; }
+  .app-shell { padding: 0; }
 
   .sidebar-overlay {
     display: block;

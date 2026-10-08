@@ -22,6 +22,7 @@ const route = useRoute()
 .admin-nav {
   display: flex;
   gap: 0;
+  flex-wrap: wrap;
   border-bottom: 2px solid var(--border);
   margin-bottom: 1.5rem;
 }
@@ -47,5 +48,9 @@ const route = useRoute()
   color: var(--fg);
   border-color: var(--border);
   background: var(--bg);
+}
+@media (max-width: 768px) {
+  .admin-nav-item { padding: 8px; font-size: 0.75rem; }
+  .admin-nav-item::before { content: ''; }
 }
 </style>

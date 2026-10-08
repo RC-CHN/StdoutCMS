@@ -8,6 +8,9 @@
   --muted: #666666;
   --border: #111111;
   --accent: #0a7d2c;
+  --danger: #b42318;
+  --header-height: 108px;
+  --font-reading: system-ui, -apple-system, 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif;
   --accent-fg: #f4f4f4;
   --shadow: 5px 5px 0px #111111;
   --grid-color: rgba(0, 0, 0, 0.05);
@@ -23,6 +26,7 @@ body.dark-mode {
   --muted: #7d8590;
   --border: #4d5560;
   --accent: #33ff66;
+  --danger: #ff8a80;
   --accent-fg: #0d1117;
   --shadow: 5px 5px 0px rgba(0, 0, 0, 0.45);
   --grid-color: rgba(255, 255, 255, 0.035);
@@ -234,5 +238,23 @@ footer {
 /* 响应式 */
 @media (max-width: 600px) {
   .container { padding: 1.5rem 1rem; }
-  button { width: 100%; text-align: center; }
+  footer { flex-wrap: wrap; gap: 0.5rem; }
+}
+
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:disabled:hover { background-size: 0; color: var(--fg); }
+.btn-primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.state-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.reading-page { max-width: 760px; margin-inline: auto; min-width: 0; }
+.article-content { font-family: var(--font-reading); line-height: 1.9; overflow-wrap: anywhere; min-width: 0; }
+.article-content pre, .article-content code { font-family: var(--font-main); }
+.article-content pre { max-width: 100%; overflow-wrap: normal; }
+.article-content [id] { scroll-margin-top: calc(var(--header-height) + 1rem); }
+.skip-link { position: fixed; left: 1rem; top: -100px; z-index: 1000; padding: 0.75rem; background: var(--bg); color: var(--fg); }
+.skip-link:focus { top: 0.5rem; }
+.marquee-container:hover .marquee-content { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .marquee-container { white-space: normal; text-align: center; }
+  .marquee-content { padding-left: 0; }
 }

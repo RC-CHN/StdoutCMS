@@ -10,7 +10,7 @@ defineProps<{
 <template>
   <article class="post-card">
     <div class="post-meta">
-      <span>DATE: {{ post.createdAt ? post.createdAt.slice(0, 10) : '—' }}</span>
+      <time :datetime="post.createdAt">{{ post.createdAt ? post.createdAt.slice(0, 10) : '—' }}</time>
       <span>TAGS: [{{ (post.tags || []).join(', ') }}]</span>
     </div>
     <RouterLink :to="`/article/${post.slug}`" class="post-title">{{ post.title }}</RouterLink>
@@ -51,7 +51,8 @@ defineProps<{
   color: var(--muted);
   margin-bottom: 0.8rem;
   display: flex;
-  gap: 15px;
+  flex-wrap: wrap;
+  gap: 4px 15px;
   border-bottom: 1px dotted var(--muted);
   padding-bottom: 5px;
 }
@@ -70,11 +71,15 @@ defineProps<{
 }
 
 .post-excerpt {
+  font-family: var(--font-reading);
   color: var(--muted);
   margin-bottom: 1rem;
 }
 
 @media (max-width: 600px) {
   .post-card { padding: 1rem; }
+  .post-meta { font-size: 0.75rem; }
+  .post-meta time { white-space: nowrap; }
+  .post-title { font-size: 1.25rem; line-height: 1.5; }
 }
 </style>
