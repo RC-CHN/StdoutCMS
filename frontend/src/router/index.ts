@@ -1,9 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import { useAuth } from '../composables/useAuth'
+import { waitForPageContent } from './scroll'
 
 const router = createRouter({
   history: createWebHistory(),
+  async scrollBehavior(to, _from, savedPosition) {
+    await waitForPageContent()
+    if (router.currentRoute.value.fullPath !== to.fullPath) return false
+    if (to.hash) {
+      let id = to.hash.slice(1)
+      try { id = decodeURIComponent(id) } catch { /* malformed fragment */ }
+      const element = document.getElementById(id)
+      if (element) return { el: element, top: parseFloat(getComputedStyle(element).scrollMarginTop) || 0 }
+    }
+    return savedPosition || { top: 0 }
+  },
   routes: [
     {
       path: '/',

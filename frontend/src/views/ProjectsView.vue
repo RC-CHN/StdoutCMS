@@ -1,29 +1,36 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import PageState from '../components/PageState.vue'
 import { listProjects } from '../api/projects'
 import type { ProjectPayload } from '../api/projects'
 
 const projects = ref<ProjectPayload[]>([])
-const loading = ref(false)
+const loading = ref(true)
+const error = ref('')
 
-onMounted(async () => {
+async function loadProjects() {
   loading.value = true
+  error.value = ''
   try {
     const data = await listProjects()
-    projects.value = data.projects
+    projects.value = data.projects || []
   } catch {
-    // keep default empty
+    error.value = 'Could not load projects. Please try again.'
   } finally {
     loading.value = false
   }
-})
+}
+onMounted(loadProjects)
 </script>
 
 <template>
   <h1 class="projects-title">> projects/__init__.py</h1>
 
-  <div v-if="loading" class="status-line">loading projects...</div>
+  <PageState v-if="loading" mode="loading" message="Loading projects…" />
+  <PageState v-else-if="error" mode="error" :message="error" retry @retry="loadProjects" />
+  <PageState v-else-if="!projects.length" mode="empty" message="No projects to show yet." />
 
+  <template v-else>
   <div class="project-card" v-for="p in projects" :key="p.name">
     <h2>{{ p.name }}</h2>
     <p>{{ p.description }}</p>
@@ -35,10 +42,12 @@ onMounted(async () => {
   </div>
 
   <div class="eof-marker">EOF</div>
+  </template>
 </template>
 
 <style scoped>
 .projects-title {
+  overflow-wrap: anywhere;
   font-size: 1.8rem;
   margin-bottom: 2rem;
   color: var(--fg);
@@ -71,6 +80,7 @@ onMounted(async () => {
   color: var(--muted);
   margin-bottom: 1rem;
   display: flex;
+  flex-wrap: wrap;
   gap: 15px;
   border-bottom: 1px dotted var(--muted);
   padding-bottom: 8px;
@@ -88,6 +98,7 @@ onMounted(async () => {
 
 .page-nav {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
   gap: 1rem;

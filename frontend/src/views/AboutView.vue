@@ -2,41 +2,50 @@
 import { ref, onMounted } from 'vue'
 import { getAbout } from '../api/about'
 import type { AboutPayload } from '../api/about'
+import PageState from '../components/PageState.vue'
+import MobileArticleRenderer from '../components/MobileArticleRenderer.vue'
+import { useBreakpoint } from '../composables/useBreakpoint'
 import ArticleRenderer from '../components/ArticleRenderer.vue'
 
 const about = ref<AboutPayload | null>(null)
-const loading = ref(false)
+const loading = ref(true)
+const { isMobile } = useBreakpoint()
 const error = ref('')
 
-onMounted(async () => {
+async function loadAbout() {
   loading.value = true
+  error.value = ''
   try {
     about.value = await getAbout()
   } catch {
-    error.value = 'about not found'
+    error.value = 'Could not load the About page. Please try again.'
   } finally {
     loading.value = false
   }
-})
+}
+onMounted(loadAbout)
 </script>
 
 <template>
+  <div class="reading-page">
   <div class="prompt-line">
     guest@k8s-node ~ %  <span style="color: var(--muted);">cat about.md</span>
   </div>
 
-  <div v-if="loading" class="status-line">cat about.md...</div>
-  <div v-else-if="error" class="status-line" style="color: #ff4444;">ERROR: {{ error }}</div>
+  <PageState v-if="loading" mode="loading" message="Loading About…" />
+  <PageState v-else-if="error" mode="error" :message="error" retry @retry="loadAbout" />
 
   <template v-else-if="about">
     <div class="about-header">
       <h1 class="about-title">{{ about.title }}</h1>
     </div>
-    <article class="article-content">
-      <ArticleRenderer :content="about.content" />
+    <article>
+      <MobileArticleRenderer v-if="isMobile" :content="about.content" />
+      <ArticleRenderer v-else :content="about.content" />
     </article>
     <div class="eof-marker">EOF</div>
   </template>
+  </div>
 </template>
 
 <style scoped>
@@ -75,16 +84,6 @@ onMounted(async () => {
   color: var(--fg);
 }
 
-.article-content { font-size: 1.05rem; }
-.article-content :deep(h2) { margin-top: 2.5rem; margin-bottom: 1rem; color: var(--fg); }
-.article-content :deep(h2::before) { content: ">> "; color: var(--muted); }
-.article-content :deep(p) { margin-bottom: 1.5rem; }
-.article-content :deep(ul) { margin-bottom: 1.5rem; padding-left: 2rem; list-style-type: square; }
-.article-content :deep(li) { margin-bottom: 0.5rem; }
-.article-content :deep(code) { background: var(--fg); color: var(--bg); padding: 2px 6px; font-weight: bold; }
-.article-content :deep(blockquote) { border-left: 4px solid var(--border); padding: 1rem 1.5rem; margin: 2rem 0; color: var(--muted); background: rgba(128,128,128,0.05); font-style: italic; }
-.article-content :deep(a) { color: var(--fg); text-decoration: underline; text-decoration-style: dashed; }
-.article-content :deep(a:hover) { background-color: var(--fg); color: var(--bg); text-decoration: none; }
 .eof-marker { text-align: center; margin: 4rem 0 2rem 0; font-weight: bold; color: var(--muted); letter-spacing: 5px; }
 .eof-marker::before { content: "--- [ "; }
 .eof-marker::after { content: " ] ---"; }
