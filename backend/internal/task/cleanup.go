@@ -12,7 +12,7 @@ import (
 
 // CleanupOrphanImages returns a scheduler-compatible task that scans MinIO
 // for images under "images/" and deletes any that are not referenced by any
-// post's content.
+// post's content or the About page.
 func CleanupOrphanImages(logger *slog.Logger, pg *store.Postgres, s3 *storage.S3) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
 		// 1. List all images in MinIO
@@ -25,13 +25,13 @@ func CleanupOrphanImages(logger *slog.Logger, pg *store.Postgres, s3 *storage.S3
 			return nil
 		}
 
-		// 2. Get all post content
+		// 2. Get all post content (including drafts) and About content
 		contents, err := pg.GetAllContent(ctx)
 		if err != nil {
 			return fmt.Errorf("get all content: %w", err)
 		}
 
-		// 3. Find orphans — keys not referenced in any post content
+		// 3. Find orphans — keys not referenced in any stored content
 		orphans := findOrphans(keys, contents)
 
 		if len(orphans) == 0 {

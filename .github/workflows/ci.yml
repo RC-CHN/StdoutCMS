@@ -9,6 +9,22 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: stdoutcms_test
+          POSTGRES_PASSWORD: stdoutcms_test
+          POSTGRES_DB: stdoutcms_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stdoutcms_test -d stdoutcms_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgres://stdoutcms_test:stdoutcms_test@localhost:5432/stdoutcms_test?sslmode=disable
     defaults:
       run:
         working-directory: backend

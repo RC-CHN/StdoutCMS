@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -10,7 +12,15 @@ import (
 	"stdoutcms/internal/store"
 )
 
-func Login(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerFunc {
+type adminReader interface {
+	GetAdminByUsername(context.Context, string) (*store.Admin, error)
+}
+
+type sessionWriter interface {
+	SetSession(context.Context, string, string, int) error
+}
+
+func Login(pg adminReader, rd sessionWriter, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var req struct {
@@ -34,7 +44,14 @@ func Login(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerF
 		}
 
 		token := generateToken()
-		rd.SetSession(ctx, token, req.Username, cfg.SessionMaxAge)
+		if err := rd.SetSession(ctx, token, req.Username, cfg.SessionMaxAge); err != nil {
+			slog.ErrorContext(ctx, "failed to create login session", "error", err)
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error": "authentication service unavailable",
+				"code":  "AUTH_BACKEND_DOWN",
+			})
+			return
+		}
 
 		// Respect X-Forwarded-Proto from Nginx for cookie Secure flag.
 		// When Nginx terminates TLS, it sets X-Forwarded-Proto=https.

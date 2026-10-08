@@ -125,6 +125,15 @@ npm install
 npm run dev        # Vite dev server on :5173, proxies /api to :8080
 ```
 
+Run backend tests with `cd backend && go test ./...`. PostgreSQL integration
+tests require `TEST_DATABASE_URL` pointing to a test database; they use temporary
+tables and are skipped when the variable is unset. CI runs them against PostgreSQL 15.
+
+```bash
+# From backend/, with a local test database running:
+TEST_DATABASE_URL='postgres://user:password@localhost:5432/stdoutcms_test?sslmode=disable' go test ./...
+```
+
 ---
 
 ## License
