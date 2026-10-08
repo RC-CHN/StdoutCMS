@@ -3,13 +3,14 @@ import { ref, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { listProjectsAdmin, deleteProject as apiDelete } from '../../api/projects'
 import type { ProjectPayload } from '../../api/projects'
+import PageState from '../../components/PageState.vue'
 import AdminNav from '../../components/AdminNav.vue'
 import TerminalFeedback from '../../components/TerminalFeedback.vue'
 
 const router = useRouter()
 
 const projects = ref<ProjectPayload[]>([])
-const loading = ref(false)
+const loading = ref(true)
 const error = ref('')
 
 const feedbackMsg = ref<string | null>(null)
@@ -27,7 +28,7 @@ async function fetch() {
   error.value = ''
   try {
     const data = await listProjectsAdmin()
-    projects.value = data.projects
+    projects.value = data.projects || []
   } catch (e: any) {
     error.value = e.message || 'failed'
   } finally {
@@ -56,8 +57,9 @@ onMounted(fetch)
     root@k8s-node ~/admin $ <span class="muted">ls -la ./projects</span>
   </div>
 
-  <div v-if="loading" class="status-line">loading projects...</div>
-  <div v-else-if="error" class="status-line" style="color: #ff4444;">ERROR: {{ error }}</div>
+  <PageState v-if="loading" mode="loading" message="Loading projects…" />
+  <PageState v-else-if="error" mode="error" :message="error" retry @retry="fetch" />
+  <PageState v-else-if="!projects.length" mode="empty" message="No projects yet. Add your first project below." />
 
   <table class="post-table" v-else>
     <thead>
@@ -71,13 +73,13 @@ onMounted(fetch)
     </thead>
     <tbody>
       <tr v-for="p in projects" :key="p.id">
-        <td>-rw-r--r--</td>
-        <td>
+        <td class="permissions">-rw-r--r--</td>
+        <td class="post-name" data-label="PROJECT">
           <a :href="p.url" class="file-link" target="_blank">{{ p.name }}</a>
         </td>
-        <td>{{ p.lang }}</td>
-        <td>{{ p.status }}</td>
-        <td>
+        <td data-label="LANGUAGE">{{ p.lang }}</td>
+        <td data-label="STATUS">{{ p.status }}</td>
+        <td class="row-actions" data-label="ACTIONS">
           <button class="btn btn-sm" @click="router.push(`/admin/projects/edit/${p.id}`)">EDIT</button>
           <button class="btn btn-sm btn-danger" @click="deleteProject(p.id, p.name)">DEL</button>
         </td>
@@ -116,4 +118,23 @@ onMounted(fetch)
 .admin-actions { display: flex; justify-content: space-between; align-items: center; border-top: 2px dashed var(--border); padding-top: 1.5rem; }
 .status-line { color: var(--muted); font-size: 0.85rem; }
 @media (max-width: 600px) { .post-table th, .post-table td { padding: 6px 8px; font-size: 0.8rem; } }
+
+.post-table { table-layout: fixed; background: var(--bg); }
+.post-table td { overflow-wrap: anywhere; }
+.row-actions { white-space: normal; }
+.row-actions button { margin: 3px; }
+.admin-prompt { overflow-wrap: anywhere; }
+@media (max-width: 768px) {
+  .post-table, .post-table tbody { display: block; width: 100%; border: 0; box-shadow: none; }
+  .post-table thead { display: none; }
+  .post-table tr { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border); margin-bottom: 1rem; padding: 0.5rem; }
+  .post-table td { display: flex; flex-direction: column; border: 0; padding: 0.5rem; min-width: 0; }
+  .post-table td::before { content: attr(data-label); color: var(--muted); font-size: 0.65rem; }
+  .post-table .post-name { grid-column: 1 / -1; grid-row: 1; font-size: 1rem; }
+  .post-table .permissions { display: none; }
+  .post-table .row-actions { grid-column: 1 / -1; flex-direction: row; gap: 0.5rem; }
+  .row-actions::before { display: none; }
+  .row-actions button { flex: 1; min-height: 40px; margin: 0; }
+  .admin-actions { gap: 0.75rem; flex-wrap: wrap; }
+}
 </style>

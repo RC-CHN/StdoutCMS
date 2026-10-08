@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { listPostsAdmin, deletePost as apiDeletePost } from '../../api/posts'
 import type { PostPayload } from '../../api/posts'
+import PageState from '../../components/PageState.vue'
 import AdminNav from '../../components/AdminNav.vue'
 import TerminalFeedback from '../../components/TerminalFeedback.vue'
 
@@ -12,7 +13,7 @@ const PAGE_SIZE = 5
 const page = ref(0)
 const posts = ref<PostPayload[]>([])
 const total = ref(0)
-const loading = ref(false)
+const loading = ref(true)
 const error = ref('')
 
 const feedbackMsg = ref<string | null>(null)
@@ -33,7 +34,8 @@ async function fetchPosts() {
   try {
     const apiPage = page.value + 1
     const data = await listPostsAdmin(apiPage, PAGE_SIZE)
-    posts.value = data.posts
+    posts.value = data.posts || []
+    if (!posts.value.length && page.value > 0) { page.value--; await fetchPosts(); return }
     total.value = data.total
   } catch (e: any) {
     error.value = e.message || 'failed to load posts'
@@ -70,13 +72,14 @@ onMounted(fetchPosts)
     root@k8s-node ~/admin $ <span class="muted">ls -la ./posts</span>
   </div>
 
-  <div v-if="loading" class="status-line">loading posts...</div>
-  <div v-else-if="error" class="status-line" style="color: #ff4444;">ERROR: {{ error }}</div>
+  <PageState v-if="loading" mode="loading" message="Loading posts…" />
+  <PageState v-else-if="error" mode="error" :message="error" retry @retry="fetchPosts" />
+  <PageState v-else-if="!posts.length" mode="empty" message="No posts yet. Create your first article below." />
 
   <table class="post-table" v-else>
     <thead>
       <tr>
-        <th>PERMISSIONS</th>
+        <th>STATUS</th>
         <th>OWNER</th>
         <th>SIZE</th>
         <th>DATE</th>
@@ -86,16 +89,16 @@ onMounted(fetchPosts)
     </thead>
     <tbody>
       <tr v-for="post in posts" :key="post.slug">
-        <td>-rw-r--r--</td>
-        <td>{{ post.author }}</td>
-        <td>{{ wordCount(post.content) }}B</td>
-        <td>{{ post.createdAt ? post.createdAt.slice(0, 10) : '—' }}</td>
-        <td>
-          <RouterLink :to="`/article/${post.slug}`" class="file-link">
-            {{ post.slug }}.md
+        <td data-label="STATUS">{{ post.published ? 'PUBLISHED' : 'DRAFT' }}</td>
+        <td data-label="AUTHOR">{{ post.author }}</td>
+        <td data-label="WORDS">{{ wordCount(post.content) }}</td>
+        <td data-label="DATE">{{ post.createdAt ? post.createdAt.slice(0, 10) : '—' }}</td>
+        <td class="post-name" data-label="ARTICLE">
+          <RouterLink :to="(post.published ? '/article/' : '/admin/edit/') + post.slug" class="file-link">
+            {{ post.title }}
           </RouterLink>
         </td>
-        <td>
+        <td class="row-actions" data-label="ACTIONS">
           <button class="btn btn-sm" @click="router.push(`/admin/edit/${post.slug}`)">EDIT</button>
           <button class="btn btn-sm btn-danger" @click="deletePost(post.slug)">DEL</button>
         </td>
@@ -188,7 +191,7 @@ onMounted(fetchPosts)
 }
 
 .file-link {
-  color: var(--fg);
+  color: inherit;
   text-decoration: none;
   font-weight: bold;
 }
@@ -235,5 +238,24 @@ onMounted(fetchPosts)
 button:disabled {
   opacity: 0.35;
   cursor: default;
+}
+
+.post-table { table-layout: fixed; background: var(--bg); }
+.post-table td { overflow-wrap: anywhere; }
+.row-actions { white-space: normal; }
+.row-actions button { margin: 3px; }
+.admin-prompt { overflow-wrap: anywhere; }
+@media (max-width: 768px) {
+  .post-table, .post-table tbody { display: block; width: 100%; border: 0; box-shadow: none; }
+  .post-table thead { display: none; }
+  .post-table tr { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border); margin-bottom: 1rem; padding: 0.5rem; }
+  .post-table td { display: flex; flex-direction: column; border: 0; padding: 0.5rem; min-width: 0; }
+  .post-table td::before { content: attr(data-label); color: var(--muted); font-size: 0.65rem; }
+  .post-table .post-name { grid-column: 1 / -1; grid-row: 1; font-size: 1rem; }
+  .post-table .permissions { display: none; }
+  .post-table .row-actions { grid-column: 1 / -1; flex-direction: row; gap: 0.5rem; }
+  .row-actions::before { display: none; }
+  .row-actions button { flex: 1; min-height: 40px; margin: 0; }
+  .admin-actions { gap: 0.75rem; flex-wrap: wrap; }
 }
 </style>
