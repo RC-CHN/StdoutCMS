@@ -42,6 +42,9 @@ Open `http://localhost:8080`. Admin panel at `/admin` (default: `root` / `root`)
 - **Project showcase** — lang / status / url fields
 - **About page** — standalone singleton page
 - **Admin panel** — split-view markdown editor with live preview
+- **Writing recovery** — local backups per article, explicit restore, and separate save/publish/unpublish actions
+- **Reading navigation** — article contents, pagination and scroll restoration, mobile sharing
+- **Mobile editing** — single-pane edit/preview, accessible post actions, retryable uploads
 - **Image paste** — paste images directly into the editor, uploaded to MinIO
 - **Dark mode** — `[ INVERT_COLORS ]` toggle, persists to localStorage
 - **AI chat** (optional) — SSE streaming chat widget, article-aware context
@@ -133,6 +136,12 @@ tables and are skipped when the variable is unset. CI runs them against PostgreS
 # From backend/, with a local test database running:
 TEST_DATABASE_URL='postgres://user:password@localhost:5432/stdoutcms_test?sslmode=disable' go test ./...
 ```
+
+Frontend checks: `cd frontend && npm test && npm run build`. Tests cover the
+Markdown parser, API errors, local draft recovery, and upload failure/retry.
+Local backups are stored in the current browser; use **Save draft** or
+**Save changes** to save to the server. Saving a published article keeps it
+published; **Unpublish** is a separate action with confirmation.
 
 ---
 

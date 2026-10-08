@@ -73,8 +73,8 @@ cd frontend
 npm test              # vitest — markdown parser suite (src/utils/md.test.ts)
 ```
 
-Frontend coverage currently targets the markdown parser; Vue components
-and composables are still untested.
+Frontend coverage targets the markdown parser, API errors, local draft storage,
+and upload failure/retry. Vue components are not yet covered by unit tests.
 
 ## Project structure
 
@@ -243,13 +243,17 @@ StdoutCMS/
 - Auth state: token stored in memory (`useAuth`), presence flag in
   `sessionStorage('blog_logged_in')` for UI restore after refresh.
   Actual validation happens on first API call (401 → redirect to /login).
-- Drafts: `useDraft()` persists editor state to `localStorage('blog_editor_draft')`,
-  auto-saves on change (1s debounce), restored on mount.
-- Image paste: `useImagePaste` inserts `![image](uploading-xxx)` placeholder,
-  uploads via `uploadFile()`, then replaces placeholder with real URL.
-- Editor toolbar: `useEditorToolbar` offers image/audio/video/file pickers that
-  insert cursor-aware placeholders into the textarea and swap in the final URL
-  (`![kind:name](url)`); `uploadFile()` returns `{url, kind}`.
+- Drafts: `useDraft(slug)` stores backups under `blog_editor_draft:post:{slug}`
+  or `blog_editor_draft:new`. PostEditView debounces content changes for 1s,
+  flushes on leave, and offers restore/discard after loading server content.
+  Saving preserves publication state and form contents; unpublish is explicit.
+- Uploads: `useEditorUploads` owns placeholders, pending/failed jobs, retries
+  and removal. `useImagePaste` binds to the editor textarea; `useEditorToolbar`
+  provides image/audio/video/file pickers using the same upload state.
+  `UploadStatus` displays failures; incomplete uploads prevent saving.
+- Reading: homepage pagination lives in the URL; router scroll restoration
+  waits for loading states to settle. Article contents links reuse rendered
+  heading IDs. ShareQR and its image exporter load only when needed.
 - Mobile UI: `useBreakpoint()` shares a reactive `isMobile` flag (768px).
   ArticleView/App.vue swap in Mobile* components when mobile; desktop keeps
   ArticleRenderer/ChatWidget.
@@ -424,8 +428,8 @@ cd frontend && npm run build
 
 1. **Single admin user** — `admins` table supports multiple rows, but seeding
    only creates one, and there's no admin management UI.
-2. **Thin frontend test coverage** — only the markdown parser is tested
-   (vitest); Vue components and composables are untested.
+2. **Thin frontend component coverage** — Vitest covers Markdown, API errors,
+   draft storage and upload recovery; Vue component tests are still missing.
 3. **Markdown parser edge cases** — hand-rolled parser; reference-style
    links, footnotes, setext headings and syntax highlighting are unsupported.
 4. **Store tests missing** — PostgreSQL and Redis are tested only indirectly
