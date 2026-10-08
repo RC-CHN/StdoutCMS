@@ -1,12 +1,19 @@
 name: CI
 
 on:
+  workflow_call:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
+  release-tooling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -B -m unittest discover -s tools -p 'test_release.py'
+
   backend:
     runs-on: ubuntu-latest
     services:
@@ -34,7 +41,7 @@ jobs:
         with:
           go-version: "1.26"
       - run: go vet ./...
-      - run: go build ./cmd/server
+      - run: sh ../tools/build-backend.sh
       - run: go test ./...
 
   frontend:

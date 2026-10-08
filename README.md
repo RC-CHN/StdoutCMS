@@ -145,6 +145,42 @@ published; **Unpublish** is a separate action with confirmation.
 
 ---
 
+## Versioning and releases
+
+The root [`VERSION`](VERSION) file is the single application version source,
+using `X.Y.Z` without a `v` prefix. Both container images use this version as
+their tag; the backend embeds it and exposes it through `/api/v1/meta`.
+The private frontend package has no independent version.
+
+For a versioned local backend binary, run `sh tools/build-backend.sh` from
+the repository root. Plain `go run ./cmd/server` still reports `dev`.
+Standalone Docker builds now use the repository root as their context:
+`docker build -f backend/Dockerfile .`. Docker Compose handles this automatically.
+
+To release from a clean, up-to-date `main` branch:
+
+```bash
+git pull --ff-only
+git fetch --tags
+# Commit all features, fixes, and optional docs/releases/vX.Y.Z.md notes first.
+sh tools/release.sh X.Y.Z
+git push --atomic origin main vX.Y.Z
+```
+
+Replace `X.Y.Z` with the next stable version. The script updates only `VERSION`,
+creates `chore: release vX.Y.Z`, and points an annotated `vX.Y.Z` tag at that
+commit. It rejects dirty worktrees, existing local tags, and non-increasing
+versions. Historical tags are unchanged.
+
+The Release workflow checks the tagged commit's subject, changed files, and
+version before running CI. Only after the checks and both GHCR image builds
+succeed does it publish the GitHub Release, using committed release notes when
+available. Invalid release tags cannot publish through this workflow.
+Release tooling tests run with
+`python3 -B -m unittest discover -s tools -p 'test_release.py'`.
+
+---
+
 ## License
 
 MIT

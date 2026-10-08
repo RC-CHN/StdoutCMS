@@ -58,7 +58,8 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
       args:
         GOPROXY: ${GOPROXY:-}
     restart: unless-stopped

@@ -377,6 +377,24 @@ LLM integration is **off by default**. Set `LLM_ENDPOINT`, `LLM_API_KEY`,
 
 ## Build and deployment
 
+### Versioning and release policy
+
+- Root `VERSION` is the single application version source (`X.Y.Z`, no `v`).
+  The private frontend package does not carry a separate version.
+- Every new release tag `vX.Y.Z` must point to a dedicated commit whose exact
+  subject is `chore: release vX.Y.Z`; that commit changes only `VERSION`.
+  Commit features, fixes, tooling, and documentation before the release commit.
+  Do not rewrite existing historical tags.
+- Prepare releases from clean `main` with `sh tools/release.sh X.Y.Z` after
+  fetching remote tags. Publish the branch and tag together with
+  `git push --atomic origin main vX.Y.Z` when publication is requested.
+- `tools/check-release.sh` enforces the tag/commit/version contract in CI.
+  The Release workflow runs all checks, builds both GHCR images, then creates
+  the GitHub Release. Optional release notes live in `docs/releases/vX.Y.Z.md`.
+- Backend Docker builds use the repository root context and read `VERSION`.
+  `sh tools/build-backend.sh` embeds the same version for local builds;
+  plain `go run` intentionally reports `dev`.
+
 ### Docker setup
 
 - **backend**: multi-stage Go build → Alpine binary with migrations

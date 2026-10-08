@@ -8,7 +8,25 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate release commit and version
+        run: sh tools/check-release.sh "$GITHUB_REF_NAME"
+
+  checks:
+    needs: validate
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
   build-and-push:
+    needs: checks
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -16,16 +34,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract version
+      - name: Read version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: echo "VERSION=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Lowercase image name
         id: image
         run: |
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "backend=ghcr.io/${OWNER_LC}/stdoutcms/backend" >> $GITHUB_OUTPUT
-          echo "frontend=ghcr.io/${OWNER_LC}/stdoutcms/frontend" >> $GITHUB_OUTPUT
+          echo "backend=ghcr.io/${OWNER_LC}/stdoutcms/backend" >> "$GITHUB_OUTPUT"
+          echo "frontend=ghcr.io/${OWNER_LC}/stdoutcms/frontend" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -40,10 +58,9 @@ jobs:
       - name: Build and push backend
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: .
+          file: backend/Dockerfile
           push: true
-          build-args: |
-            VERSION=${{ steps.version.outputs.VERSION }}
           tags: |
             ${{ steps.image.outputs.backend }}:latest
             ${{ steps.image.outputs.backend }}:${{ steps.version.outputs.VERSION }}
@@ -60,3 +77,25 @@ jobs:
             ${{ steps.image.outputs.frontend }}:${{ steps.version.outputs.VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  publish:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            notes="docs/releases/$GITHUB_REF_NAME.md"
+            if [ -f "$notes" ]; then
+              gh release create "$GITHUB_REF_NAME" --verify-tag \
+                --title "$GITHUB_REF_NAME" --notes-file "$notes"
+            else
+              gh release create "$GITHUB_REF_NAME" --verify-tag \
+                --title "$GITHUB_REF_NAME" --generate-notes
+            fi
+          fi
