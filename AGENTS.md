@@ -8,7 +8,7 @@ visitors read them through a retro CLI-styled UI.
 
 - **Name in code**: `stdoutcms` (Go module), `STDOUT_CMS_ELF` (user-facing)
 - **Author**: Ruochen Pan (`blog`)
-- **License**: MIT
+- **License**: WTFPL
 
 ## Tech stack
 

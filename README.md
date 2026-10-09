@@ -183,4 +183,5 @@ Release tooling tests run with
 
 ## License
 
-MIT
+WTFPL — DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE, Version 2.
+See [LICENSE](LICENSE).
