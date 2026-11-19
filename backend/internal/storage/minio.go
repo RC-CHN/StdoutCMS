@@ -52,21 +52,6 @@ func (s *S3) Delete(ctx context.Context, key string) error {
 	return s.client.RemoveObject(ctx, s.cfg.Bucket, key, minio.RemoveObjectOptions{})
 }
 
-// ListObjectKeys returns all object keys under the given prefix (recursive).
-func (s *S3) ListObjectKeys(ctx context.Context, prefix string) ([]string, error) {
-	var keys []string
-	for obj := range s.client.ListObjects(ctx, s.cfg.Bucket, minio.ListObjectsOptions{
-		Prefix:    prefix,
-		Recursive: true,
-	}) {
-		if obj.Err != nil {
-			return nil, fmt.Errorf("ListObjects: %w", obj.Err)
-		}
-		keys = append(keys, obj.Key)
-	}
-	return keys, nil
-}
-
 // GenerateKey returns an object key from a prefix, UUID, and content-type (e.g.
 // "image/png") or plain extension (e.g. ".jpg"). Falls back to ".bin" if neither
 // is usable.  Prefix is typically "images", "audio", "video", or "files".

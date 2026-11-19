@@ -2,80 +2,43 @@ package task
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
-
-	"stdoutcms/internal/storage"
-	"stdoutcms/internal/store"
+	"time"
 )
 
-// CleanupOrphanImages returns a scheduler-compatible task that scans MinIO
-// for images under "images/" and deletes any that are not referenced by any
-// post's content or the About page.
-func CleanupOrphanImages(logger *slog.Logger, pg *store.Postgres, s3 *storage.S3) func(ctx context.Context) error {
+type imageCleanupStore interface {
+	ListImageCleanupCandidates(context.Context) ([]string, error)
+	DeleteImageIfUnreferenced(context.Context, string, func(context.Context, string) error) (bool, error)
+}
+
+// Only images removed from server-saved content are candidates. An upload may
+// belong to a browser draft for any length of time before its first server save.
+func CleanupOrphanImages(logger *slog.Logger, pg imageCleanupStore, remove func(context.Context, string) error) func(context.Context) error {
 	return func(ctx context.Context) error {
-		// 1. List all images in MinIO
-		keys, err := s3.ListObjectKeys(ctx, "images/")
+		keys, err := pg.ListImageCleanupCandidates(ctx)
 		if err != nil {
-			return fmt.Errorf("list objects: %w", err)
-		}
-		if len(keys) == 0 {
-			logger.Info("orphan-images: no images found, nothing to do")
-			return nil
+			return fmt.Errorf("list image cleanup candidates: %w", err)
 		}
 
-		// 2. Get all post content (including drafts) and About content
-		contents, err := pg.GetAllContent(ctx)
-		if err != nil {
-			return fmt.Errorf("get all content: %w", err)
-		}
-
-		// 3. Find orphans — keys not referenced in any stored content
-		orphans := findOrphans(keys, contents)
-
-		if len(orphans) == 0 {
-			logger.Info("orphan-images: no orphans found", "total", len(keys))
-			return nil
-		}
-
-		logger.Info("orphan-images: deleting orphans", "orphans", len(orphans), "total", len(keys))
-
-		// 4. Delete orphans
-		var deleted int
-		var errs []string
-		for _, key := range orphans {
-			if err := s3.Delete(ctx, key); err != nil {
-				errs = append(errs, fmt.Sprintf("%s: %v", key, err))
-			} else {
+		var failures []error
+		deleted := 0
+		for _, key := range keys {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			// An object-store outage must not hold up content writes indefinitely.
+			attempt, cancel := context.WithTimeout(ctx, 5*time.Second)
+			removed, err := pg.DeleteImageIfUnreferenced(attempt, key, remove)
+			cancel()
+			if err != nil {
+				failures = append(failures, fmt.Errorf("clean up %s: %w", key, err))
+			} else if removed {
 				deleted++
 			}
 		}
-
-		logger.Info("orphan-images: cleanup finished",
-			"deleted", deleted,
-			"failed", len(errs),
-			"total_images", len(keys),
-		)
-
-		if len(errs) > 0 {
-			return fmt.Errorf("partial cleanup: %d/%d deleted, errors: %s",
-				deleted, len(orphans), strings.Join(errs, "; "))
-		}
-
-		return nil
+		logger.Info("orphan-images: cleanup finished", "candidates", len(keys), "deleted", deleted, "failed", len(failures))
+		return errors.Join(failures...)
 	}
-}
-
-// findOrphans returns keys that are not referenced as substrings in any
-// content string. Exported for testing.
-func findOrphans(keys []string, contents []string) []string {
-	allText := strings.Join(contents, "\n")
-	var orphans []string
-	for _, key := range keys {
-		if !strings.Contains(allText, key) {
-			orphans = append(orphans, key)
-		}
-	}
-	return orphans
 }

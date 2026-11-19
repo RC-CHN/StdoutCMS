@@ -275,30 +275,6 @@ func (p *Postgres) DeleteProject(ctx context.Context, id int) error {
 	return nil
 }
 
-// GetAllContent returns every post's content (including drafts) and About content.
-// Used by orphan-image cleanup to check which images are still referenced.
-func (p *Postgres) GetAllContent(ctx context.Context) ([]string, error) {
-	rows, err := p.pool.Query(ctx, `
-		SELECT content FROM posts
-		UNION ALL
-		SELECT content FROM about
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var contents []string
-	for rows.Next() {
-		var c string
-		if err := rows.Scan(&c); err != nil {
-			return nil, err
-		}
-		contents = append(contents, c)
-	}
-	return contents, rows.Err()
-}
-
 // ---- Admin ----
 
 func (p *Postgres) GetAdminByUsername(ctx context.Context, username string) (*Admin, error) {

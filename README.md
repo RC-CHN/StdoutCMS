@@ -129,8 +129,9 @@ npm run dev        # Vite dev server on :5173, proxies /api to :8080
 ```
 
 Run backend tests with `cd backend && go test ./...`. PostgreSQL integration
-tests require `TEST_DATABASE_URL` pointing to a test database; they use temporary
-tables and are skipped when the variable is unset. CI runs them against PostgreSQL 15.
+tests require `TEST_DATABASE_URL` pointing to a test database. They use isolated
+tables or schemas and are skipped when the variable is unset. CI runs them
+against PostgreSQL 15.
 
 ```bash
 # From backend/, with a local test database running:
@@ -142,6 +143,13 @@ Markdown parser, API errors, local draft recovery, and upload failure/retry.
 Local backups are stored in the current browser; use **Save draft** or
 **Save changes** to save to the server. Saving a published article keeps it
 published; **Unpublish** is a separate action with confirmation.
+
+New images uploaded to a browser draft survive restarts and have no cleanup
+deadline. Cleanup considers an image only after it has been removed from a
+server-saved article or the About page, and checks all remaining server content
+before deleting it. This also keeps abandoned uploads that were never saved.
+If you reuse an existing image URL in a local draft, save that draft to the
+server before removing the image's last server-side reference.
 
 ---
 

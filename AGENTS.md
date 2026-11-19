@@ -94,7 +94,8 @@ StdoutCMS/
 │   │   ├── config/config.go       ← env var loading (mustEnv for required, getEnv for optional)
 │   │   ├── store/
 │   │   │   ├── models.go          ← Post, Project, Admin, About structs
-│   │   │   ├── postgres.go        ← all PostgreSQL queries (pgxpool)
+│   │   │   ├── postgres.go        ← PostgreSQL content and admin queries (pgxpool)
+│   │   │   ├── image_cleanup.go   ← image cleanup candidates and reference checks
 │   │   │   └── redis.go           ← session, cache, chat history, daily quota
 │   │   ├── handler/
 │   │   │   ├── handler.go         ← core: Version, slugRegex, Health, Meta, SeedAdmin
@@ -110,16 +111,17 @@ StdoutCMS/
 │   │   │   ├── cors.go            ← same-origin only, whitelist localhost:5173
 │   │   │   └── logger.go          ← structured request logging via slog
 │   │   ├── storage/
-│   │   │   └── minio.go           ← S3/MinIO upload, delete, list, GenerateKey
+│   │   │   └── minio.go           ← S3/MinIO upload, delete, GenerateKey
 │   │   ├── scheduler/
 │   │   │   ├── scheduler.go       ← lightweight periodic task runner (goroutine per task)
 │   │   │   └── scheduler_test.go
 │   │   └── task/
-│   │       ├── cleanup.go         ← orphan image cleanup (scans MinIO, matches post content)
+│   │       ├── cleanup.go         ← cleanup of images removed from server content
 │   │       └── cleanup_test.go
 │   └── migrations/
 │       ├── 001_init.sql           ← posts, projects, admins tables, pg_trgm indices
-│       └── 002_about.sql          ← standalone about table, data migration from posts
+│       ├── 002_about.sql          ← standalone about table, one-time move from posts
+│       └── 003_image_cleanup.sql  ← queue images removed from posts and About
 ├── frontend/
 │   ├── package.json
 │   ├── vite.config.ts
@@ -198,7 +200,7 @@ StdoutCMS/
 | `store/redis` | Session CRUD, cache get/set/delete, chat history, daily quota | Auth decisions |
 | `handler` | HTTP handlers: parse requests, call store, return JSON | Direct SQL, business rules |
 | `middleware` | Auth check, CORS headers, request logging | Route registration |
-| `storage` | MinIO upload/delete/list, key generation | URL construction (CDN base from config) |
+| `storage` | MinIO upload/delete, key generation | URL construction (CDN base from config) |
 | `scheduler` | Periodic task loop (goroutine per task) | Task definitions |
 | `task` | Orphan image cleanup logic | Schedule timing |
 
@@ -233,8 +235,11 @@ StdoutCMS/
   `mime.ExtensionsByType`.
 - Read time: `calcReadTime()` in handler/post.go derives it from word count on
   create/update when `read_time` is empty; explicit values are kept.
-- Migrations: `001_init.sql` is checked for table existence before running.
-  `002_about.sql` is unconditional but idempotent (INSERT ... WHERE NOT EXISTS).
+- `001_init.sql` runs when the posts table is absent. `002_about.sql` moves
+  the legacy About post only when it first creates the standalone about table.
+  `003_image_cleanup.sql` installs the image cleanup queue and its triggers.
+- Image cleanup checks keys removed from server content against all remaining
+  posts (including drafts) and About. Uploads used only in local drafts stay in MinIO.
 
 ### TypeScript/Vue
 
@@ -450,8 +455,8 @@ cd frontend && npm run build
    draft storage and upload recovery; Vue component tests are still missing.
 3. **Markdown parser edge cases** — hand-rolled parser; reference-style
    links, footnotes, setext headings and syntax highlighting are unsupported.
-4. **Store tests missing** — PostgreSQL and Redis are tested only indirectly
-   via handler/scheduler/task tests. No isolated DB tests with test fixtures.
+4. **Store coverage** — PostgreSQL integration tests cover the About migration
+   and image cleanup. Redis has no isolated store tests.
 5. **No structured logging on frontend** — errors are mostly `console.error`
    or shown as terminal-style messages.
 6. **Upload Content-Type is client-controlled** — `kindForContentType` trusts

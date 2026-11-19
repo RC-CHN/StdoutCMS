@@ -60,14 +60,17 @@ func main() {
 	}
 	logger.Info("migration 001 complete")
 
-	// migration 002 — standalone about table
-	m2Path := filepath.Join(filepath.Dir(migrationPath), "002_about.sql")
-	if m2, err := os.ReadFile(m2Path); err == nil {
-		if err := pg.ExecRaw(context.Background(), string(m2)); err != nil {
-			logger.Error("failed to run migration 002", "error", err)
+	for _, name := range []string{"002_about.sql", "003_image_cleanup.sql"} {
+		sql, err := os.ReadFile(filepath.Join(filepath.Dir(migrationPath), name))
+		if err != nil {
+			logger.Error("failed to read migration", "file", name, "error", err)
 			os.Exit(1)
 		}
-		logger.Info("migration 002 complete")
+		if err := pg.ExecRaw(context.Background(), string(sql)); err != nil {
+			logger.Error("failed to run migration", "file", name, "error", err)
+			os.Exit(1)
+		}
+		logger.Info("migration complete", "file", name)
 	}
 
 	rd, err := store.NewRedis(cfg.RedisURL)
@@ -153,7 +156,7 @@ func main() {
 		scheduler.Task{
 			Name:     "cleanup-orphan-images",
 			Interval: 24 * time.Hour,
-			Run:      task.CleanupOrphanImages(logger, pg, s3),
+			Run:      task.CleanupOrphanImages(logger, pg, s3.Delete),
 		},
 	)
 	go sched.Start(ctx)
