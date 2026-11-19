@@ -1,50 +1,36 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { fetchMeta } from '../api/meta'
 import type { MetaResponse } from '../api/meta'
 
-const route = useRoute()
-const meta = ref<MetaResponse | null>(null)
-
-onMounted(async () => {
-  try { meta.value = await fetchMeta() } catch { /* ignore */ }
-})
-
-const marqueeText = computed(() => {
-  const m = meta.value
-  if (route.name === 'article') {
-    return '*** READING_MODE *** 0 TRACKERS *** 0 ANALYTICS *** PLAIN TEXT ONLY *** ENJOY ***'
-  }
-  if (route.name === 'about') {
-    return '*** ABOUT *** A HUMAN BEING *** POWERED BY CURIOSITY AND COFFEE ***'
-  }
-  if (route.name === 'projects') {
-    return '*** PROJECTS *** COMPILED FROM IDEAS *** SHIPPED WITH LOVE ***'
-  }
-  const parts = ['*** STDOUT_CMS_ELF ***']
-  if (m) parts.push(`POSTS: ${m.posts}`)
-  if (m) parts.push(`PROJECTS: ${m.projects}`)
-  if (m) parts.push(`UPTIME: ${m.uptime}`)
-  parts.push('STATELESS *** ALL GREEN ***')
-  return parts.join(' *** ')
-})
-
-const footerRight = computed(() => {
-  if (meta.value) return `UPTIME: ${meta.value.uptime}`
-  return 'LOADING...'
-})
+defineProps<{ meta: MetaResponse | null }>()
 </script>
 
 <template>
-  <div class="marquee-container">
-    <div class="marquee-content">{{ marqueeText }}</div>
-  </div>
-
-  <div class="container" style="padding-top: 0; padding-bottom: 2rem;">
-    <footer>
-      <span>(c) 2026 Ruochen_Pan.</span>
-      <span>{{ footerRight }}</span>
-    </footer>
-  </div>
+  <footer class="site-footer">
+    <ul v-if="meta" class="site-stats" aria-label="Site information">
+      <li>build <b>{{ meta.version }}</b></li>
+      <li>articles <b>{{ meta.posts }}</b></li>
+      <li>projects <b>{{ meta.projects }}</b></li>
+      <li>uptime <b>{{ meta.uptime }}</b></li>
+    </ul>
+    <small>© 2026 Ruochen Pan</small>
+  </footer>
 </template>
+
+<style scoped>
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+  padding: 0.65rem 1rem;
+  border-top: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.site-stats { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; list-style: none; }
+.site-stats li { white-space: nowrap; }
+.site-stats b { color: var(--fg); }
+.site-footer small { font-size: inherit; }
+</style>

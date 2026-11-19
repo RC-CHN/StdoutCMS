@@ -140,18 +140,20 @@ function initCopyButtons(root: HTMLElement) {
     const code = pre.querySelector<HTMLElement>('code')
     if (!langBar || !code) return
 
-    const btn = document.createElement('span')
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.setAttribute('aria-label', 'Copy code')
     btn.className = 'md-copy-btn'
-    btn.textContent = '[COPY]'
+    btn.textContent = 'COPY'
     langBar.appendChild(btn)
 
     btn.addEventListener('click', async (e) => {
       e.stopPropagation()
       const ok = await copyText(code.innerText)
-      btn.textContent = ok ? '[ OK ]' : '[FAIL]'
+      btn.textContent = ok ? '[ OK ]' : '[ ERROR ]'
       btn.classList.toggle('is-copied', ok)
       setTimeout(() => {
-        btn.textContent = '[COPY]'
+        btn.textContent = 'COPY'
         btn.classList.remove('is-copied')
       }, 1500)
     })
@@ -296,6 +298,9 @@ onMounted(() => {
 }
 
 .article-content :deep(.md-copy-btn) {
+  font-size: inherit;
+  background: transparent;
+  border: 0;
   color: var(--muted);
   font-weight: bold;
   white-space: nowrap;
@@ -355,7 +360,7 @@ onMounted(() => {
   display: block;
   width: 100%;
   height: auto;
-  cursor: url('/win-95-98/hand.cur'), pointer;
+  cursor: pointer;
 }
 
 .article-content :deep(.md-image-caption) {

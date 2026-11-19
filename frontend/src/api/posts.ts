@@ -14,13 +14,27 @@ export interface PostPayload {
   updatedAt?: string
 }
 
+export interface PostSummary {
+  slug: string
+  title: string
+  excerpt?: string
+  tags: string[]
+  createdAt: string
+}
+
+interface PostListResponse<T> {
+  posts: T[]
+  total: number
+  page: number
+  pageSize: number
+}
+
 export function listPosts(page = 1, size = 10) {
-  return get<{
-    posts: PostPayload[]
-    total: number
-    page: number
-    pageSize: number
-  }>(`/posts?page=${page}&size=${size}`)
+  return get<PostListResponse<PostPayload>>(`/posts?page=${page}&size=${size}`)
+}
+
+export function listPostSummaries(page = 1, size = 10) {
+  return get<PostListResponse<PostSummary>>(`/posts?page=${page}&size=${size}&view=summary`)
 }
 
 export function getPost(slug: string) {
@@ -28,12 +42,7 @@ export function getPost(slug: string) {
 }
 
 export function listPostsAdmin(page = 1, size = 10) {
-  return get<{
-    posts: PostPayload[]
-    total: number
-    page: number
-    pageSize: number
-  }>(`/admin/posts?page=${page}&size=${size}`)
+  return get<PostListResponse<PostPayload>>(`/admin/posts?page=${page}&size=${size}`)
 }
 
 export function createPost(payload: PostPayload) {

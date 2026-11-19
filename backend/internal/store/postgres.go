@@ -42,10 +42,13 @@ func (p *Postgres) CountPosts(ctx context.Context) (int, error) {
 	return n, err
 }
 
-func (p *Postgres) CountProjects(ctx context.Context) (int, error) {
-	var n int
-	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM projects").Scan(&n)
-	return n, err
+func (p *Postgres) SiteCounts(ctx context.Context) (int, int, error) {
+	var posts, projects int
+	err := p.pool.QueryRow(ctx, `
+		SELECT (SELECT count(*) FROM posts WHERE published = true),
+		       (SELECT count(*) FROM projects)
+	`).Scan(&posts, &projects)
+	return posts, projects, err
 }
 
 func (p *Postgres) Close() {
@@ -57,8 +60,7 @@ func (p *Postgres) Close() {
 // ---- Posts ----
 
 func (p *Postgres) ListPosts(ctx context.Context, page, size int) ([]Post, int, error) {
-	var total int
-	err := p.pool.QueryRow(ctx, "SELECT count(*) FROM posts WHERE published = true").Scan(&total)
+	total, err := p.CountPosts(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -90,6 +92,26 @@ func (p *Postgres) ListPosts(ctx context.Context, page, size int) ([]Post, int, 
 		posts = make([]Post, 0)
 	}
 	return posts, total, rows.Err()
+}
+
+func (p *Postgres) ListPostSummaries(ctx context.Context, page, size int) ([]PostSummary, int, error) {
+	total, err := p.CountPosts(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := p.pool.Query(ctx, `
+		SELECT slug, title, excerpt, tags, created_at
+		FROM posts
+		WHERE published = true
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2
+	`, size, (page-1)*size)
+	if err != nil {
+		return nil, 0, err
+	}
+	posts, err := pgx.CollectRows(rows, pgx.RowToStructByPos[PostSummary])
+	return posts, total, err
 }
 
 func (p *Postgres) GetPostBySlug(ctx context.Context, slug string) (*Post, error) {

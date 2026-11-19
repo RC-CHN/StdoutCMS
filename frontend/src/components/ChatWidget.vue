@@ -5,7 +5,7 @@ import { useChat } from '../composables/useChat'
 import { parseMarkdown } from '../utils/md'
 
 const route = useRoute()
-const { messages, input, loading, thinking, error, canSend, send, clear } = useChat()
+const { messages, input, loading, thinking, error, inputError, canSend, send, clear } = useChat()
 
 const isOpen = ref(false)
 const scrollRef = ref<HTMLDivElement>()
@@ -126,9 +126,10 @@ onUnmounted(() => {
     :style="{ left: pos.x + 'px', top: pos.y + 'px' }"
     @mousedown="onTriggerMouseDown"
     @click="onTriggerClick"
-    title="AI Assistant"
+    title="Open AI chat"
+    aria-label="Open AI chat"
   >
-    [&gt;_]
+    AI
   </button>
 
   <!-- 聊天窗口 -->
@@ -143,18 +144,17 @@ onUnmounted(() => {
       :class="{ dragging: isDragging }"
       @mousedown="onHeaderMouseDown"
     >
-      <span>[ AI_ASSISTANT ]</span>
+      <span>$ ./chat.elf</span>
       <div class="chat-header-actions">
-        <button class="chat-action" @click="clear" title="clear session">[CLR]</button>
-        <button class="chat-action" @click="toggle" title="close">[×]</button>
+        <button class="chat-action" @click="clear" aria-label="Clear conversation" :disabled="loading || !messages.length">CLEAR</button>
+        <button class="chat-action" @click="toggle" aria-label="Close AI chat">CLOSE</button>
       </div>
     </div>
 
     <!-- 消息区 -->
     <div ref="scrollRef" class="chat-messages">
       <div v-if="messages.length === 0" class="chat-empty">
-        [STDOUT_CMS_ELF] ready.<br>
-        Ask me anything<span v-if="ctx"> about this article</span>.
+        {{ ctx ? 'Ask a question about this article.' : 'Ask a question about the blog.' }}
       </div>
 
       <div
@@ -163,34 +163,34 @@ onUnmounted(() => {
         :class="['chat-msg', msg.role]"
       >
         <div class="chat-msg-prefix">
-          {{ msg.role === 'user' ? '>' : '[STDOUT_CMS_ELF]' }}
+          {{ msg.role === 'user' ? 'YOU' : 'AI' }}
         </div>
         <!-- 最后一个 assistant 空内容 + 加载中：思考 / 光标 -->
         <div
           v-if="msg.role === 'assistant' && !msg.content && loading && i === messages.length - 1"
           class="chat-msg-body"
         >
-          <span v-if="thinking" class="thinking-indicator">thinking...</span>
-          <span v-else class="typing-cursor">█</span>
+          <span class="thinking-indicator" role="status">[ WAIT ] {{ thinking ? 'Thinking…' : 'Waiting for a reply…' }}</span>
         </div>
         <div v-else class="chat-msg-body" v-html="parseMarkdown(msg.content)" />
       </div>
 
       <!-- 错误 -->
-      <div v-if="error" class="chat-error">
-        [ERROR: {{ error }}]
+      <div v-if="inputError || error" class="chat-error" role="alert">
+        [ ERROR ] {{ inputError || error }}
       </div>
     </div>
 
     <!-- 输入区 -->
     <div class="chat-input-area">
-      <span class="chat-prompt">guest@k8s-node ~ $</span>
+      <span class="chat-prompt" aria-hidden="true">&gt;</span>
       <textarea
         ref="inputRef"
         v-model="input"
         rows="1"
         class="chat-input"
-        placeholder="type your question..."
+        aria-label="Question for the AI assistant"
+        placeholder="Type a question…"
         @keydown="handleKeydown"
       />
       <button
@@ -198,7 +198,7 @@ onUnmounted(() => {
         :disabled="!canSend"
         @click="handleSend"
       >
-        [ENTER]
+        SEND
       </button>
     </div>
   </div>
@@ -217,7 +217,7 @@ onUnmounted(() => {
   font-size: 0.9rem;
   font-weight: bold;
   color: var(--fg);
-  cursor: url('/win-95-98/relocate.cur'), move;
+  cursor: grab;
   z-index: 100;
   display: flex;
   align-items: center;
@@ -228,6 +228,7 @@ onUnmounted(() => {
   color: var(--bg);
 }
 .chat-trigger.dragging {
+  cursor: grabbing;
   background: var(--fg);
   color: var(--bg);
 }
@@ -259,10 +260,11 @@ onUnmounted(() => {
   font-weight: bold;
   font-size: 0.8rem;
   flex-shrink: 0;
-  cursor: url('/win-95-98/relocate.cur'), move;
+  cursor: grab;
   user-select: none;
 }
 .chat-header.dragging {
+  cursor: grabbing;
   opacity: 0.9;
 }
 .chat-header-actions {
@@ -275,11 +277,16 @@ onUnmounted(() => {
   color: var(--bg);
   font-family: var(--font-main);
   font-size: 0.75rem;
-  cursor: url('/win-95-98/hand.cur'), pointer;
+  cursor: pointer;
   padding: 0;
 }
-.chat-action:hover {
+.chat-action:hover:not(:disabled) {
   opacity: 0.7;
+}
+.chat-action:disabled {
+  color: var(--bg);
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* ---- 消息区 ---- */
@@ -315,7 +322,7 @@ onUnmounted(() => {
   user-select: none;
 }
 .chat-msg.user .chat-msg-prefix {
-  color: #3b82f6;
+  color: var(--accent);
 }
 .chat-msg-body :deep(p) {
   margin: 0.4rem 0;
@@ -349,10 +356,10 @@ onUnmounted(() => {
 }
 
 .chat-error {
-  color: #ef4444;
+  color: var(--danger);
   font-size: 0.82rem;
   padding: 8px 10px;
-  border: 1px dashed #ef4444;
+  border: 1px dashed currentColor;
   margin-top: 8px;
 }
 
@@ -400,7 +407,7 @@ onUnmounted(() => {
   font-size: 0.75rem;
   padding: 4px 10px;
   white-space: nowrap;
-  cursor: url('/win-95-98/hand.cur'), pointer;
+  cursor: pointer;
   background: var(--bg);
   color: var(--fg);
   border: 2px solid var(--border);
@@ -420,23 +427,9 @@ onUnmounted(() => {
   transform: none;
 }
 
-/* ---- 打字机光标 ---- */
-.typing-cursor {
-  animation: blink 1s step-end infinite;
-}
-@keyframes blink {
-  50% { opacity: 0; }
-}
-
 /* ---- 思考中 ---- */
 .thinking-indicator {
   color: var(--muted);
-  font-style: italic;
-  animation: think-pulse 1.5s ease-in-out infinite;
-}
-@keyframes think-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
 }
 
 /* ---- 响应式 ---- */

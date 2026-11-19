@@ -37,8 +37,8 @@ async function fetchPosts() {
     posts.value = data.posts || []
     if (!posts.value.length && page.value > 0) { page.value--; await fetchPosts(); return }
     total.value = data.total
-  } catch (e: any) {
-    error.value = e.message || 'failed to load posts'
+  } catch {
+    error.value = 'Could not load articles.'
   } finally {
     loading.value = false
   }
@@ -47,18 +47,18 @@ async function fetchPosts() {
 function nextPage() { if (page.value < totalPages.value - 1) { page.value++; fetchPosts() } }
 function prevPage() { if (page.value > 0) { page.value--; fetchPosts() } }
 
-function wordCount(content: string) {
+function characterCount(content: string) {
   return content.replace(/\s/g, '').length
 }
 
 async function deletePost(slug: string) {
-  if (!confirm(`Delete "${slug}.md"?`)) return
+  if (!confirm(`Permanently delete "${slug}.md"?`)) return
   try {
     await apiDeletePost(slug)
-    showFeedback(`${slug}.md deleted`, 'ok')
+    showFeedback(`Deleted ${slug}.md.`, 'ok')
     fetchPosts()
   } catch (e: any) {
-    showFeedback(e.message || 'delete failed', 'err')
+    showFeedback(e.message || 'Could not delete this article.', 'err')
   }
 }
 
@@ -69,21 +69,21 @@ onMounted(fetchPosts)
   <AdminNav />
 
   <div class="admin-prompt">
-    root@k8s-node ~/admin $ <span class="muted">ls -la ./posts</span>
+    root@stdoutcms:~/admin# <span class="muted">ls -l articles/</span>
   </div>
 
-  <PageState v-if="loading" mode="loading" message="Loading posts…" />
+  <PageState v-if="loading" mode="loading" message="Loading articles…" />
   <PageState v-else-if="error" mode="error" :message="error" retry @retry="fetchPosts" />
-  <PageState v-else-if="!posts.length" mode="empty" message="No posts yet. Create your first article below." />
+  <PageState v-else-if="!posts.length" mode="empty" message="No articles yet." />
 
   <table class="post-table" v-else>
     <thead>
       <tr>
         <th>STATUS</th>
-        <th>OWNER</th>
-        <th>SIZE</th>
+        <th>AUTHOR</th>
+        <th>CHARS</th>
         <th>DATE</th>
-        <th>FILENAME</th>
+        <th>ARTICLE</th>
         <th>ACTIONS</th>
       </tr>
     </thead>
@@ -91,7 +91,7 @@ onMounted(fetchPosts)
       <tr v-for="post in posts" :key="post.slug">
         <td data-label="STATUS">{{ post.published ? 'PUBLISHED' : 'DRAFT' }}</td>
         <td data-label="AUTHOR">{{ post.author }}</td>
-        <td data-label="WORDS">{{ wordCount(post.content) }}</td>
+        <td data-label="CHARS">{{ characterCount(post.content) }}</td>
         <td data-label="DATE">{{ post.createdAt ? post.createdAt.slice(0, 10) : '—' }}</td>
         <td class="post-name" data-label="ARTICLE">
           <RouterLink :to="(post.published ? '/article/' : '/admin/edit/') + post.slug" class="file-link">
@@ -100,22 +100,22 @@ onMounted(fetchPosts)
         </td>
         <td class="row-actions" data-label="ACTIONS">
           <button class="btn btn-sm" @click="router.push(`/admin/edit/${post.slug}`)">EDIT</button>
-          <button class="btn btn-sm btn-danger" @click="deletePost(post.slug)">DEL</button>
+          <button class="btn btn-sm btn-danger" @click="deletePost(post.slug)">DELETE</button>
         </td>
       </tr>
     </tbody>
   </table>
 
   <!-- 分页 -->
-  <nav class="page-nav" v-if="totalPages > 1">
-    <button class="btn" :disabled="page === 0" @click="prevPage">&lt;&lt; prev</button>
+  <nav class="page-nav" v-if="totalPages > 1" aria-label="Article pages">
+    <button class="btn" :disabled="page === 0" @click="prevPage">PREVIOUS</button>
     <span class="page-info">{{ page + 1 }} / {{ totalPages }}</span>
-    <button class="btn" :disabled="page >= totalPages - 1" @click="nextPage">next &gt;&gt;</button>
+    <button class="btn" :disabled="page >= totalPages - 1" @click="nextPage">NEXT</button>
   </nav>
 
   <div class="admin-actions">
-    <RouterLink to="/admin/edit" class="btn">+ NEW_POST.MD</RouterLink>
-    <span class="status-line">{{ total }} file(s) found</span>
+    <RouterLink to="/admin/edit" class="btn">NEW ARTICLE</RouterLink>
+    <span v-if="!loading && !error && total" class="status-line">{{ total }} {{ total === 1 ? 'article' : 'articles' }}</span>
   </div>
 
   <TerminalFeedback
@@ -125,9 +125,6 @@ onMounted(fetchPosts)
     :trigger="feedbackTrigger"
   />
 
-  <div class="admin-prompt" style="margin-top: 2rem;">
-    root@k8s-node ~/admin $<span class="cursor"></span>
-  </div>
 </template>
 
 <style scoped>
@@ -146,19 +143,6 @@ onMounted(fetchPosts)
   font-size: 0.82rem;
   color: var(--muted);
   margin-bottom: 1rem;
-}
-
-.cursor {
-  display: inline-block;
-  width: 8px;
-  height: 1em;
-  background: var(--fg);
-  animation: blink 1s step-end infinite;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
 }
 
 .post-table {
@@ -201,13 +185,13 @@ onMounted(fetchPosts)
 }
 
 .btn-danger {
-  color: #ff4444;
-  border-color: #ff4444;
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 .btn-danger:hover {
-  background: #ff4444;
-  color: #fff;
+  background: var(--danger);
+  color: var(--bg);
 }
 
 .page-nav {
@@ -252,7 +236,6 @@ button:disabled {
   .post-table td { display: flex; flex-direction: column; border: 0; padding: 0.5rem; min-width: 0; }
   .post-table td::before { content: attr(data-label); color: var(--muted); font-size: 0.65rem; }
   .post-table .post-name { grid-column: 1 / -1; grid-row: 1; font-size: 1rem; }
-  .post-table .permissions { display: none; }
   .post-table .row-actions { grid-column: 1 / -1; flex-direction: row; gap: 0.5rem; }
   .row-actions::before { display: none; }
   .row-actions button { flex: 1; min-height: 40px; margin: 0; }

@@ -5,7 +5,7 @@ import { useChat } from '../composables/useChat'
 import { parseMarkdown } from '../utils/md'
 
 const route = useRoute()
-const { messages, input, loading, thinking, error, canSend, send, clear } = useChat()
+const { messages, input, loading, thinking, error, inputError, canSend, send, clear } = useChat()
 
 const isOpen = ref(false)
 const scrollRef = ref<HTMLDivElement>()
@@ -48,24 +48,22 @@ watch([messages, loading], () => {
   <div class="mobile-chat">
     <!-- collapsed: tap to expand -->
     <button v-if="!isOpen" class="mobile-chat-trigger" @click="toggle">
-      <span>[ &gt;_ ASK_AI ]</span>
-      <span v-if="ctx" class="mobile-chat-ctx">about this article</span>
+      {{ ctx ? 'ASK AI ABOUT THIS ARTICLE' : 'OPEN AI CHAT' }}
     </button>
 
     <!-- expanded: full chat panel -->
     <div v-else class="mobile-chat-panel">
       <div class="mobile-chat-header">
-        <span>[ AI_ASSISTANT ]</span>
+        <span>$ ./chat.elf</span>
         <div class="mobile-chat-actions">
-          <button class="mobile-chat-action" @click="clear">CLR</button>
-          <button class="mobile-chat-action" @click="toggle">CLOSE</button>
+          <button class="mobile-chat-action" @click="clear" aria-label="Clear conversation" :disabled="loading || !messages.length">CLEAR</button>
+          <button class="mobile-chat-action" @click="toggle" aria-label="Close AI chat">CLOSE</button>
         </div>
       </div>
 
       <div ref="scrollRef" class="mobile-chat-messages">
         <div v-if="messages.length === 0" class="mobile-chat-empty">
-          [STDOUT_CMS_ELF] ready.<br>
-          Ask me anything<span v-if="ctx"> about this article</span>.
+          {{ ctx ? 'Ask a question about this article.' : 'Ask a question about the blog.' }}
         </div>
 
         <div
@@ -74,20 +72,19 @@ watch([messages, loading], () => {
           :class="['mobile-chat-msg', msg.role]"
         >
           <div class="mobile-chat-prefix">
-            {{ msg.role === 'user' ? '>' : '[AI]' }}
+            {{ msg.role === 'user' ? 'YOU' : 'AI' }}
           </div>
           <div
             v-if="msg.role === 'assistant' && !msg.content && loading && i === messages.length - 1"
             class="mobile-chat-body"
           >
-            <span v-if="thinking" class="mobile-thinking">thinking...</span>
-            <span v-else class="mobile-cursor">█</span>
+            <span class="mobile-thinking" role="status">[ WAIT ] {{ thinking ? 'Thinking…' : 'Waiting for a reply…' }}</span>
           </div>
           <div v-else class="mobile-chat-body" v-html="parseMarkdown(msg.content, true)" />
         </div>
 
-        <div v-if="error" class="mobile-chat-error">
-          [ERROR: {{ error }}]
+        <div v-if="inputError || error" class="mobile-chat-error" role="alert">
+          [ ERROR ] {{ inputError || error }}
         </div>
       </div>
 
@@ -97,7 +94,8 @@ watch([messages, loading], () => {
           v-model="input"
           rows="1"
           class="mobile-chat-input"
-          placeholder="type your question..."
+          aria-label="Question for the AI assistant"
+          placeholder="Type a question…"
           @keydown="handleKeydown"
         />
         <button
@@ -105,7 +103,7 @@ watch([messages, loading], () => {
           :disabled="!canSend"
           @click="handleSend"
         >
-          [ ENTER ]
+          SEND
         </button>
       </div>
     </div>
@@ -138,12 +136,6 @@ watch([messages, loading], () => {
 .mobile-chat-trigger:active {
   background: var(--fg);
   color: var(--bg);
-}
-
-.mobile-chat-ctx {
-  font-size: 0.7rem;
-  font-weight: normal;
-  color: var(--muted);
 }
 
 /* ---- expanded panel ---- */
@@ -186,8 +178,13 @@ watch([messages, loading], () => {
   -webkit-tap-highlight-color: transparent;
 }
 
-.mobile-chat-action:active {
+.mobile-chat-action:active:not(:disabled) {
   opacity: 0.6;
+}
+.mobile-chat-action:disabled {
+  color: var(--bg);
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* ---- messages ---- */
@@ -231,7 +228,7 @@ watch([messages, loading], () => {
 }
 
 .mobile-chat-msg.user .mobile-chat-prefix {
-  color: #3b82f6;
+  color: var(--accent);
 }
 
 .mobile-chat-body :deep(p) {
@@ -270,10 +267,10 @@ watch([messages, loading], () => {
 }
 
 .mobile-chat-error {
-  color: #ef4444;
+  color: var(--danger);
   font-size: 0.78rem;
   padding: 6px 8px;
-  border: 1px dashed #ef4444;
+  border: 1px dashed currentColor;
   margin-top: 6px;
 }
 
@@ -342,22 +339,7 @@ watch([messages, loading], () => {
 }
 
 /* ---- indicators ---- */
-.mobile-cursor {
-  animation: mobile-blink 1s step-end infinite;
-}
-
-@keyframes mobile-blink {
-  50% { opacity: 0; }
-}
-
 .mobile-thinking {
   color: var(--muted);
-  font-style: italic;
-  animation: mobile-think-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes mobile-think-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
 }
 </style>

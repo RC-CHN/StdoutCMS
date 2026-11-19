@@ -129,7 +129,7 @@ StdoutCMS/
 │   ├── Dockerfile
 │   ├── index.html
 │   ├── public/
-│   │   └── win-95-98/             ← retro cursor files, favicon, pixel font
+│   │   └── terminal.svg           ← terminal prompt favicon
 │   └── src/
 │       ├── main.ts                ← Vue app entry
 │       ├── App.vue                ← root shell: header, sidebar, footer, chat widget
@@ -157,7 +157,7 @@ StdoutCMS/
 │       │   └── md.test.ts         ← vitest suite for the markdown parser
 │       ├── components/
 │       │   ├── TerminalHeader.vue  ← typewriter effect, theme toggle, login/logout
-│       │   ├── TerminalFooter.vue  ← marquee with meta info (post count, uptime)
+│       │   ├── TerminalFooter.vue  ← site statistics and API uptime
 │       │   ├── FileListing.vue     ← `ls -lh` style directory listing (root + articles)
 │       │   ├── AdminNav.vue        ← admin tab bar [posts] [projects] [about]
 │       │   ├── PostCard.vue        ← blog post card on home page
@@ -166,14 +166,14 @@ StdoutCMS/
 │       │   ├── ChatWidget.vue      ← draggable floating chat window (SSE-enabled, desktop)
 │       │   ├── MobileChatWidget.vue ← mobile chat panel (SSE, article ctx aware)
 │       │   ├── ShareQR.vue         ← QR share card modal (qrcode + html2canvas)
-│       │   └── TerminalFeedback.vue ← [ OK ] / [FAIL] status messages
+│       │   └── TerminalFeedback.vue ← [ OK ] / [ ERROR ] status messages
 │       ├── views/
 │       │   ├── HomeView.vue        ← paginated post list
 │       │   ├── ArticleView.vue     ← single post with ArticleRenderer
 │       │   ├── AboutView.vue       ← about page (rendered from about.md content)
 │       │   ├── ProjectsView.vue    ← project cards
 │       │   ├── LoginView.vue       ← login form
-│       │   ├── ErrorView.vue       ← Unix signal-themed error pages
+│       │   ├── ErrorView.vue       ← terminal-style HTTP error pages
 │       │   └── admin/
 │       │       ├── PostListView.vue   ← admin post table (ls -la style)
 │       │       ├── PostEditView.vue   ← split-view markdown editor + AI meta generation
@@ -273,6 +273,11 @@ StdoutCMS/
   (code spans, media, links, autolinks) is replaced by a `\x00N\x00` token,
   emphasis runs last, then tokens are restored. Link/media URLs are
   sanitized (javascript:/data: schemes blocked).
+- The Linux terminal theme uses `guest@stdoutcms:~$` for public prompts and
+  `root@stdoutcms:~/admin#` for administration. Simulated executable names
+  use lowercase `./name.elf`; articles and About use `.md`. Show the actual
+  HTTP status on error pages. Use `[ WAIT ]`, `[ OK ]`, `[ ERROR ]` and
+  `[ EMPTY ]` for feedback, and name actions with verbs.
 - Theme: `dark-mode` class on `body`, preference stored in `localStorage('blog_theme_pref')`.
   Falls back to `prefers-color-scheme: dark`.
 
@@ -374,7 +379,8 @@ LLM integration is **off by default**. Set `LLM_ENDPOINT`, `LLM_API_KEY`,
   the post content is injected into the conversation as a system-level
   `<article>` block. Context change detection avoids re-injecting.
 - **History**: stored in Redis List (`chat:session:{sid}`), limited to 20
-  rounds (40 messages). Session TTL 1 hour (no sliding renewal).
+  rounds (40 messages). Completing a turn stores both messages together
+  and refreshes the session TTL to 1 hour.
 - **Daily quota**: public chat uses `chat:quota:daily` counter in Redis,
   auto-expires at midnight. Admin chat has no limit.
 - **Metadata generation**: non-streaming call to LLM, XML-tagged output

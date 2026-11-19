@@ -38,8 +38,8 @@ onUnmounted(clearTimer)
 const prefix = () => {
   switch (props.type) {
     case 'ok':   return '[ OK ]'
-    case 'err':  return '[FAIL]'
-    default:     return '[...]'
+    case 'err':  return '[ ERROR ]'
+    default:     return '[ INFO ]'
   }
 }
 </script>
@@ -49,7 +49,6 @@ const prefix = () => {
     <div v-if="visible && message" class="term-feedback" :class="'term-' + type" :role="type === 'err' ? 'alert' : 'status'">
       <span class="term-prefix">{{ prefix() }}</span>
       <span class="term-msg">{{ message }}</span>
-      <span class="term-cursor">_</span>
     </div>
   </Transition>
 </template>
@@ -71,8 +70,8 @@ const prefix = () => {
   flex-shrink: 0;
 }
 
-.term-ok .term-prefix { color: #00cc66; }
-.term-err .term-prefix { color: #ff4444; }
+.term-ok .term-prefix { color: var(--accent); }
+.term-err .term-prefix { color: var(--danger); }
 .term-info .term-prefix { color: var(--muted); }
 
 .term-msg {
@@ -81,16 +80,6 @@ const prefix = () => {
 }
 
 .term-err .term-msg { color: var(--danger); }
-
-.term-cursor {
-  color: var(--fg);
-  animation: cursor-blink 1s step-end infinite;
-}
-
-@keyframes cursor-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
 
 /* Transition */
 .term-fade-enter-active { animation: term-slide-in 0.25s ease-out; }

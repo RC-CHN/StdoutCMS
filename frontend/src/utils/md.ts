@@ -100,7 +100,7 @@ function renderMediaMobile(type: MediaType, label: string, src: string): string 
     case 'file':
       return `<figure class="md-media md-file md-mobile">`
         + `<a href="${safeSrc}" download class="md-file-link">`
-        + `<div class="md-media-meta"><span>FILE: ${display}</span><span>&#x2193;</span></div>`
+        + `<div class="md-media-meta"><span>${display}</span><span>DOWNLOAD</span></div>`
         + `</a></figure>`
     default: // image — full width, no thumbnail/crop
       return `<figure class="md-media md-image md-mobile">`
@@ -133,13 +133,13 @@ function renderMedia(type: MediaType, label: string, src: string, mobile = false
         + `<button class="md-player-btn" data-play>PLAY</button>`
         + `<div class="md-player-track" data-seek><div class="md-player-progress"></div></div>`
         + `<div class="md-player-time">--:-- / --:--</div>`
-        + `<button class="md-player-btn" data-mute>VOL: 100%</button>`
+        + `<button class="md-player-btn" data-mute>MUTE</button>`
         + `</div></figure>`
     case 'video':
       return `<figure class="md-media md-video" data-player data-collapse>`
         + `<div class="md-media-meta">`
         + `<div class="md-meta-info"><span>VIDEO</span><span class="md-res">RES: --</span></div>`
-        + `<button class="md-toggle-btn">[+] REVEAL</button>`
+        + `<button class="md-toggle-btn" aria-expanded="false">EXPAND</button>`
         + `</div>`
         + `<div class="md-foldable-content md-video-body">`
         + `<video src="${safeSrc}" preload="metadata" class="md-player-src"></video>`
@@ -147,22 +147,21 @@ function renderMedia(type: MediaType, label: string, src: string, mobile = false
         + `<button class="md-player-btn" data-play>PLAY</button>`
         + `<div class="md-player-track" data-seek><div class="md-player-progress"></div></div>`
         + `<div class="md-player-time">--:-- / --:--</div>`
-        + `<button class="md-player-btn" data-mute>VOL: 100%</button>`
+        + `<button class="md-player-btn" data-mute>MUTE</button>`
         + `<button class="md-player-btn" data-fullscreen title="fullscreen">&#x26F6;</button>`
         + `</div></div></figure>`
     case 'file':
       return `<figure class="md-media md-file">`
         + `<a href="${safeSrc}" download class="md-file-link">`
-        + `<div class="md-media-meta"><span>FILE</span><span>GET</span></div>`
+        + `<div class="md-media-meta"><span>FILE</span><span>DOWNLOAD</span></div>`
         + `<div class="md-file-body">`
         + `<h3 class="md-file-name">${display}</h3>`
-        + `<div>[ CLICK TO DOWNLOAD ]</div>`
         + `</div></a></figure>`
     default: // image — collapsible: thumbnail → full
       return `<figure class="md-media md-image" data-collapse>`
         + `<div class="md-media-meta">`
         + `<div class="md-meta-info"><span>IMG</span><span class="md-img-dims">DIM: --</span></div>`
-        + `<button class="md-toggle-btn">[+] REVEAL</button>`
+        + `<button class="md-toggle-btn" aria-expanded="false">EXPAND</button>`
         + `</div>`
         + `<div class="md-image-body">`
         + `<img src="${safeSrc}" alt="${safeLabel}">`

@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, onScopeDispose } from 'vue'
 import { chatStream } from '../api/chat'
 
 const CHAT_SID_KEY = 'chat_session_id'
@@ -16,9 +16,20 @@ export function useChat() {
   const thinking = ref(false)
   const error = ref('')
   const sid = ref(localStorage.getItem(CHAT_SID_KEY) || '')
+  const controller = new AbortController()
+  onScopeDispose(() => controller.abort())
 
+  function updateSid(newSid: string) {
+    if (sid.value === newSid) return
+    sid.value = newSid
+    localStorage.setItem(CHAT_SID_KEY, newSid)
+  }
+
+  const inputError = computed(() => new TextEncoder().encode(input.value.trim()).length > 500
+    ? 'Question exceeds the 500-byte limit. Shorten it to send.'
+    : '')
   const canSend = computed(() =>
-    !loading.value && input.value.trim().length > 0 && input.value.length <= 500
+    !loading.value && input.value.trim().length > 0 && !inputError.value
   )
 
   async function send(q: string, ctx?: string) {
@@ -45,16 +56,14 @@ export function useChat() {
       { q: q.trim(), ctx, sid: sid.value || undefined },
       {
         onDelta(delta: string, newSid: string) {
-          sid.value = newSid
-          localStorage.setItem(CHAT_SID_KEY, newSid)
+          updateSid(newSid)
           messages.value[aiIdx].content += delta
         },
         onThinking(t: boolean) {
           thinking.value = t
         },
         onDone(newSid: string) {
-          sid.value = newSid
-          localStorage.setItem(CHAT_SID_KEY, newSid)
+          updateSid(newSid)
           thinking.value = false
           loading.value = false
         },
@@ -62,13 +71,16 @@ export function useChat() {
           thinking.value = false
           error.value = msg
           loading.value = false
+          if (messages.value[aiIdx]?.content === '') messages.value.splice(aiIdx, 1)
         },
       },
+      controller.signal,
     )
   }
 
   function clear() {
     messages.value = []
+    error.value = ''
     sid.value = ''
     localStorage.removeItem(CHAT_SID_KEY)
   }
@@ -79,6 +91,7 @@ export function useChat() {
     loading,
     thinking,
     error,
+    inputError,
     sid,
     canSend,
     send,

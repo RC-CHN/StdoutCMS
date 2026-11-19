@@ -2,11 +2,12 @@
 import { ref, onMounted, watch, nextTick, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPost } from '../api/posts'
+import { ApiError } from '../api/client'
 import type { PostPayload } from '../api/posts'
 import ArticleRenderer from '../components/ArticleRenderer.vue'
 import MobileArticleRenderer from '../components/MobileArticleRenderer.vue'
 import PageState from '../components/PageState.vue'
-import { fetchMeta } from '../api/meta'
+import { useSiteMeta } from '../composables/useSiteMeta'
 import { useBreakpoint } from '../composables/useBreakpoint'
 
 const ShareQR = defineAsyncComponent(() => import('../components/ShareQR.vue'))
@@ -17,20 +18,26 @@ const slug = route.params.slug as string
 const post = ref<PostPayload | null>(null)
 const loading = ref(true)
 const error = ref('')
-const aiEnabled = ref(false)
+const meta = useSiteMeta()
 const { isMobile } = useBreakpoint()
 const contentEl = ref<HTMLElement | null>(null)
 const headings = ref<{ id: string; text: string; nested: boolean }[]>([])
 const showQR = ref(false)
 const shareStatus = ref('')
+const canShare = typeof navigator.share === 'function'
+const missing = ref(false)
 const back = typeof router.options.history.state.back === 'string' ? router.options.history.state.back : ''
 const listPath = back && /^\/(?:\?[^#]*)?$/.test(back) ? back : '/'
 
 async function loadPost() {
   loading.value = true
   error.value = ''
+  missing.value = false
   try { post.value = await getPost(slug) }
-  catch (cause) { error.value = cause instanceof Error ? cause.message : 'Could not load this article.' }
+  catch (cause) {
+    missing.value = cause instanceof ApiError && cause.status === 404
+    error.value = missing.value ? 'Article not found.' : 'Could not load this article.'
+  }
   finally { loading.value = false }
 }
 watch([post, isMobile, loading], async () => {
@@ -41,40 +48,40 @@ watch([post, isMobile, loading], async () => {
 }, { flush: 'post' })
 async function shareArticle() {
   try {
-    if (navigator.share) await navigator.share({ title: post.value?.title, url: location.href })
+    if (canShare) await navigator.share({ title: post.value?.title, url: location.href })
     else {
       await navigator.clipboard.writeText(location.href)
       shareStatus.value = 'Link copied.'
     }
   } catch (cause) {
     if (cause instanceof Error && cause.name === 'AbortError') return
-    shareStatus.value = 'Could not share. Copy the address from your browser, or use the QR card.'
+    shareStatus.value = 'Could not share the link. Copy the address from your browser or use the QR card.'
   }
 }
 function backToList() {
   if (back === listPath) router.back()
   else router.push(listPath)
 }
-onMounted(() => {
-  void loadPost()
-  fetchMeta().then(meta => { aiEnabled.value = meta.ai }).catch(() => {})
-})
+onMounted(loadPost)
 </script>
 
 <template>
   <div class="reading-page">
     <PageState v-if="loading" mode="loading" message="Loading article…" />
-    <PageState v-else-if="error" mode="error" :message="error" retry @retry="loadPost" />
+    <template v-else-if="error">
+      <PageState mode="error" :message="error" :retry="!missing" @retry="loadPost" />
+      <button v-if="missing" class="back-link" @click="backToList">← ARTICLES</button>
+    </template>
     <article v-else-if="post">
       <button class="back-link" @click="backToList">← ARTICLES</button>
       <header class="article-header">
+        <h1 class="article-title">{{ post.title }}</h1>
         <div class="article-meta">
           <span>{{ post.author }}</span>
           <time :datetime="post.createdAt">{{ post.createdAt?.slice(0, 10) || '—' }}</time>
           <span v-if="post.readTime">{{ post.readTime }} READ</span>
+          <span v-if="post.tags?.length" class="article-tags">{{ post.tags.join(' / ') }}</span>
         </div>
-        <h1 class="article-title">{{ post.title }}</h1>
-        <div v-if="post.tags?.length" class="article-tags">{{ post.tags.join(' / ') }}</div>
       </header>
       <details v-if="headings.length > 1" class="article-toc">
         <summary>CONTENTS <span>{{ headings.length }} sections</span></summary>
@@ -88,16 +95,16 @@ onMounted(() => {
         <MobileArticleRenderer v-if="isMobile" :content="post.content" />
         <ArticleRenderer v-else :content="post.content" />
       </div>
-      <div class="eof-marker">— EOF —</div>
+      <div class="eof-marker" aria-hidden="true">— EOF —</div>
       <div class="article-actions">
         <button @click="backToList">← ARTICLES</button>
-        <button @click="shareArticle">SHARE / COPY LINK</button>
+        <button @click="shareArticle">{{ canShare ? 'SHARE LINK' : 'COPY LINK' }}</button>
         <button @click="showQR = true">QR CARD</button>
       </div>
       <p class="share-status" role="status">{{ shareStatus }}</p>
       <ShareQR v-if="showQR" :slug="post.slug" :title="post.title" :tags="post.tags" :read-time="post.readTime"
         :word-count="post.wordCount" :created-at="post.createdAt" @close="showQR = false" />
-      <MobileChatWidget v-if="aiEnabled && isMobile" />
+      <MobileChatWidget v-if="meta?.ai && isMobile" />
     </article>
   </div>
 </template>
@@ -105,10 +112,10 @@ onMounted(() => {
 <style scoped>
 .back-link { border: 0; padding: 0.5rem 0; margin-bottom: 1rem; font-size: 0.75rem; color: var(--muted); }
 .article-header { margin-bottom: 2rem; }
-.article-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; color: var(--muted); font-size: 0.75rem; margin-bottom: 0.75rem; }
+.article-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; color: var(--muted); font-size: 0.75rem; margin-top: 0.75rem; overflow-wrap: anywhere; }
 .article-meta time { white-space: nowrap; }
 .article-title { font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.4; overflow-wrap: anywhere; }
-.article-tags { color: var(--muted); font-size: 0.75rem; margin-top: 0.75rem; }
+.article-tags { flex-basis: 100%; }
 .article-toc { border-block: 1px solid var(--border); padding: 0.8rem 0; margin-bottom: 2rem; font-size: 0.85rem; }
 .article-toc summary { font-weight: bold; }
 .article-toc summary span { color: var(--muted); font-size: 0.75rem; margin-left: 0.75rem; }
@@ -119,4 +126,16 @@ onMounted(() => {
 .article-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
 .article-actions button { font-size: 0.75rem; min-height: 40px; }
 .share-status { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
+
+@media (max-width: 768px) {
+  .back-link { min-height: 44px; margin-bottom: 0.125rem; }
+  .article-header { margin-bottom: 1rem; }
+  .article-title { line-height: 1.25; }
+  .article-meta { margin-top: 0.45rem; gap: 0.2rem 0.8rem; line-height: 1.5; }
+  .article-tags { flex-basis: auto; }
+  .article-toc { margin-bottom: 1rem; padding: 0; }
+  .article-toc summary, .article-toc a { min-height: 44px; padding-block: 0.7rem; line-height: 1.5; }
+  .article-toc ol { margin-top: 0; }
+  .reading-page :deep(.article-content > :first-child) { margin-top: 0; }
+}
 </style>

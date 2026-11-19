@@ -37,7 +37,7 @@ func TestMetaFormat(t *testing.T) {
 	// Test that Meta handler returns correct field structure
 	r.GET("/meta", func(c *gin.Context) {
 		c.JSON(200, MetaResponse{
-			App:       "SYS_BLOG.EXE",
+			App:       "STDOUT_CMS_ELF",
 			Version:   "test",
 			Uptime:    "1m0s",
 			Posts:     3,
@@ -55,8 +55,8 @@ func TestMetaFormat(t *testing.T) {
 	}
 	var resp MetaResponse
 	json.Unmarshal(w.Body.Bytes(), &resp)
-	if resp.App != "SYS_BLOG.EXE" {
-		t.Errorf("expected SYS_BLOG.EXE, got %s", resp.App)
+	if resp.App != "STDOUT_CMS_ELF" {
+		t.Errorf("expected STDOUT_CMS_ELF, got %s", resp.App)
 	}
 	if resp.Posts != 3 {
 		t.Errorf("expected 3 posts, got %d", resp.Posts)

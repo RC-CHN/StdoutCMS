@@ -29,21 +29,21 @@ async function fetch() {
   try {
     const data = await listProjectsAdmin()
     projects.value = data.projects || []
-  } catch (e: any) {
-    error.value = e.message || 'failed'
+  } catch {
+    error.value = 'Could not load projects.'
   } finally {
     loading.value = false
   }
 }
 
 async function deleteProject(id: number, name: string) {
-  if (!confirm(`Delete project "${name}"?`)) return
+  if (!confirm(`Permanently delete project "${name}"?`)) return
   try {
     await apiDelete(id)
-    showFeedback(`${name} deleted`, 'ok')
+    showFeedback(`Deleted ${name}.`, 'ok')
     fetch()
   } catch (e: any) {
-    showFeedback(e.message || 'delete failed', 'err')
+    showFeedback(e.message || 'Could not delete this project.', 'err')
   }
 }
 
@@ -54,26 +54,24 @@ onMounted(fetch)
   <AdminNav />
 
   <div class="admin-prompt">
-    root@k8s-node ~/admin $ <span class="muted">ls -la ./projects</span>
+    root@stdoutcms:~/admin# <span class="muted">ls -l projects/</span>
   </div>
 
   <PageState v-if="loading" mode="loading" message="Loading projects…" />
   <PageState v-else-if="error" mode="error" :message="error" retry @retry="fetch" />
-  <PageState v-else-if="!projects.length" mode="empty" message="No projects yet. Add your first project below." />
+  <PageState v-else-if="!projects.length" mode="empty" message="No projects yet." />
 
   <table class="post-table" v-else>
     <thead>
       <tr>
-        <th>PERMISSIONS</th>
-        <th>NAME</th>
-        <th>LANG</th>
+        <th>PROJECT</th>
+        <th>LANGUAGE</th>
         <th>STATUS</th>
         <th>ACTIONS</th>
       </tr>
     </thead>
     <tbody>
       <tr v-for="p in projects" :key="p.id">
-        <td class="permissions">-rw-r--r--</td>
         <td class="post-name" data-label="PROJECT">
           <a :href="p.url" class="file-link" target="_blank">{{ p.name }}</a>
         </td>
@@ -81,15 +79,15 @@ onMounted(fetch)
         <td data-label="STATUS">{{ p.status }}</td>
         <td class="row-actions" data-label="ACTIONS">
           <button class="btn btn-sm" @click="router.push(`/admin/projects/edit/${p.id}`)">EDIT</button>
-          <button class="btn btn-sm btn-danger" @click="deleteProject(p.id, p.name)">DEL</button>
+          <button class="btn btn-sm btn-danger" @click="deleteProject(p.id, p.name)">DELETE</button>
         </td>
       </tr>
     </tbody>
   </table>
 
   <div class="admin-actions">
-    <RouterLink to="/admin/projects/edit" class="btn">+ NEW_PROJECT.SH</RouterLink>
-    <span class="status-line">{{ projects.length }} file(s) found</span>
+    <RouterLink to="/admin/projects/edit" class="btn">NEW PROJECT</RouterLink>
+    <span v-if="!loading && !error && projects.length" class="status-line">{{ projects.length }} {{ projects.length === 1 ? 'project' : 'projects' }}</span>
   </div>
 
   <TerminalFeedback
@@ -99,9 +97,6 @@ onMounted(fetch)
     :trigger="feedbackTrigger"
   />
 
-  <div class="admin-prompt" style="margin-top: 2rem;">
-    root@k8s-node ~/admin $<span class="cursor"></span>
-  </div>
 </template>
 
 <style scoped>
@@ -114,7 +109,8 @@ onMounted(fetch)
 .file-link { color: var(--fg); text-decoration: underline; text-decoration-style: dashed; }
 .file-link:hover { background: var(--fg); color: var(--bg); text-decoration: none; }
 .btn-sm { padding: 4px 12px; font-size: 0.8rem; margin: 0 5px 0 0; display: inline-block; text-align: center; min-width: 50px; line-height: 1.4; vertical-align: middle; box-sizing: border-box; }
-.btn-danger:hover { background: #ff4444; color: #fff; }
+.btn-danger { color: var(--danger); border-color: var(--danger); }
+.btn-danger:hover { background: var(--danger); color: var(--bg); }
 .admin-actions { display: flex; justify-content: space-between; align-items: center; border-top: 2px dashed var(--border); padding-top: 1.5rem; }
 .status-line { color: var(--muted); font-size: 0.85rem; }
 @media (max-width: 600px) { .post-table th, .post-table td { padding: 6px 8px; font-size: 0.8rem; } }
@@ -131,7 +127,6 @@ onMounted(fetch)
   .post-table td { display: flex; flex-direction: column; border: 0; padding: 0.5rem; min-width: 0; }
   .post-table td::before { content: attr(data-label); color: var(--muted); font-size: 0.65rem; }
   .post-table .post-name { grid-column: 1 / -1; grid-row: 1; font-size: 1rem; }
-  .post-table .permissions { display: none; }
   .post-table .row-actions { grid-column: 1 / -1; flex-direction: row; gap: 0.5rem; }
   .row-actions::before { display: none; }
   .row-actions button { flex: 1; min-height: 40px; margin: 0; }

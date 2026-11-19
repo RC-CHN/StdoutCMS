@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getAbout } from '../api/about'
+import { ApiError } from '../api/client'
 import type { AboutPayload } from '../api/about'
 import PageState from '../components/PageState.vue'
 import MobileArticleRenderer from '../components/MobileArticleRenderer.vue'
@@ -17,8 +18,9 @@ async function loadAbout() {
   error.value = ''
   try {
     about.value = await getAbout()
-  } catch {
-    error.value = 'Could not load the About page. Please try again.'
+  } catch (cause) {
+    if (cause instanceof ApiError && cause.status === 404) about.value = null
+    else error.value = 'Could not load the About page.'
   } finally {
     loading.value = false
   }
@@ -29,11 +31,12 @@ onMounted(loadAbout)
 <template>
   <div class="reading-page">
   <div class="prompt-line">
-    guest@k8s-node ~ %  <span style="color: var(--muted);">cat about.md</span>
+    guest@stdoutcms:~$ <span style="color: var(--muted);">cat about.md</span>
   </div>
 
-  <PageState v-if="loading" mode="loading" message="Loading About…" />
+  <PageState v-if="loading" mode="loading" message="Loading the About page…" />
   <PageState v-else-if="error" mode="error" :message="error" retry @retry="loadAbout" />
+  <PageState v-else-if="!about" mode="empty" message="No About page yet." />
 
   <template v-else-if="about">
     <div class="about-header">
@@ -43,14 +46,13 @@ onMounted(loadAbout)
       <MobileArticleRenderer v-if="isMobile" :content="about.content" />
       <ArticleRenderer v-else :content="about.content" />
     </article>
-    <div class="eof-marker">EOF</div>
+    <div class="eof-marker" aria-hidden="true">— EOF —</div>
   </template>
   </div>
 </template>
 
 <style scoped>
 .prompt-line { margin-bottom: 2rem; font-weight: bold; }
-.status-line { color: var(--muted); font-size: 0.85rem; }
 
 /* ---- ASCII box header ---- */
 .about-header {
@@ -63,19 +65,6 @@ onMounted(loadAbout)
   background: var(--bg);
 }
 
-.about-header::before {
-  content: "[ ABOUT.TXT ]";
-  position: absolute;
-  top: -0.65rem;
-  left: 1.5rem;
-  background: var(--bg);
-  padding: 0 8px;
-  font-size: 0.7rem;
-  font-weight: bold;
-  color: var(--muted);
-  letter-spacing: 1px;
-}
-
 .about-title {
   font-size: 1.8rem;
   font-weight: bold;
@@ -85,6 +74,4 @@ onMounted(loadAbout)
 }
 
 .eof-marker { text-align: center; margin: 4rem 0 2rem 0; font-weight: bold; color: var(--muted); letter-spacing: 5px; }
-.eof-marker::before { content: "--- [ "; }
-.eof-marker::after { content: " ] ---"; }
 </style>

@@ -4,9 +4,8 @@ import { useRoute } from 'vue-router'
 import TerminalHeader from './components/TerminalHeader.vue'
 import TerminalFooter from './components/TerminalFooter.vue'
 import FileListing from './components/FileListing.vue'
-import { fetchMeta } from './api/meta'
-import { listPosts } from './api/posts'
-import type { PostPayload } from './api/posts'
+import { useSiteMeta } from './composables/useSiteMeta'
+import { listPostSummaries, type PostSummary } from './api/posts'
 import { useBreakpoint } from './composables/useBreakpoint'
 
 const ChatWidget = defineAsyncComponent(() => import('./components/ChatWidget.vue'))
@@ -14,32 +13,14 @@ const ChatWidget = defineAsyncComponent(() => import('./components/ChatWidget.vu
 const route = useRoute()
 const { isMobile } = useBreakpoint()
 
-const aiEnabled = ref(false)
-const sidebarPosts = ref<PostPayload[]>([])
-
-onMounted(() => {
-  fetchMeta()
-    .then(m => { aiEnabled.value = m.ai })
-    .catch(() => { aiEnabled.value = false })
-  // 拉取文章列表填充侧边栏（取较多条方便浏览）
-  listPosts(1, 50)
-    .then(data => { sidebarPosts.value = data.posts })
-    .catch(() => { sidebarPosts.value = [] })
-})
+const meta = useSiteMeta()
+const sidebarPosts = ref<PostSummary[]>()
+let loadingSidebar = false
 
 /* 侧边栏 toggle */
 const sidebarOpen = ref(false)
 function toggleSidebar() { sidebarOpen.value = !sidebarOpen.value }
 function closeSidebar() { sidebarOpen.value = false }
-
-/* 路径指示 */
-const promptPath = computed(() => {
-  const base = 'guest@k8s-node ~'
-  if (route.name === 'article') return base + '/articles'
-  if (route.name === 'about')   return base + '/about'
-  if (route.name === 'projects') return base + '/projects'
-  return base
-})
 
 /* 侧边栏目录上下文 */
 const listingMode = computed<'root' | 'articles'>(() =>
@@ -49,6 +30,20 @@ const listingMode = computed<'root' | 'articles'>(() =>
 const activeArticleSlug = computed(() =>
   route.name === 'article' ? (route.params.slug as string) : undefined
 )
+
+onMounted(() => {
+  watch([activeArticleSlug, isMobile, sidebarOpen], async ([slug, mobile, open]) => {
+    if (!slug || (mobile && !open) || sidebarPosts.value || loadingSidebar) return
+    loadingSidebar = true
+    try {
+      sidebarPosts.value = (await listPostSummaries(1, 50)).posts
+    } catch {
+      // Reopening the directory or visiting another article retries the request.
+    } finally {
+      loadingSidebar = false
+    }
+  }, { immediate: true })
+})
 
 watch(() => route.path, closeSidebar)
 function onEscape(event: KeyboardEvent) {
@@ -77,9 +72,9 @@ onUnmounted(() => window.removeEventListener('keydown', onEscape))
 
       <aside id="site-sidebar" class="sidebar" :class="{ open: sidebarOpen }" :inert="isMobile && !sidebarOpen" aria-label="Site navigation">
         <div class="sidebar-inner">
-          <div class="prompt-line">
-            <div class="prompt-path">{{ promptPath }}</div>
-            <div class="prompt-cmd">$ ls -lh</div>
+          <div class="prompt-line" aria-hidden="true">
+            <div>{{ route.meta.requiresAuth ? 'root@stdoutcms:~#' : 'guest@stdoutcms:~$' }}</div>
+            <div class="prompt-cmd">{{ listingMode === 'articles' ? 'ls -lh articles/' : 'ls -lh' }}</div>
           </div>
 
           <FileListing
@@ -98,8 +93,8 @@ onUnmounted(() => window.removeEventListener('keydown', onEscape))
       </main>
     </div>
 
-    <TerminalFooter />
-    <ChatWidget v-if="aiEnabled && !isMobile" />
+    <TerminalFooter :meta="meta" />
+    <ChatWidget v-if="meta?.ai && !isMobile" />
   </div>
 </template>
 
@@ -150,7 +145,6 @@ onUnmounted(() => window.removeEventListener('keydown', onEscape))
   font-size: 0.82rem;
   line-height: 1.5;
 }
-.prompt-path { color: var(--fg); }
 .prompt-cmd  { color: var(--muted); }
 
 /* ---- 侧边栏遮罩 ---- */

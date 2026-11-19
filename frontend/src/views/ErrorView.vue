@@ -1,76 +1,59 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const router = useRouter()
 
 const code = computed(() => Number(route.query.code) || Number(route.params.code) || 500)
 const rawMessage = computed(() => (route.query.message as string) || '')
 
 interface ErrorDef {
-  signal: string
   label: string
   hint: string
 }
 
 const errorDefs: Record<number, ErrorDef> = {
-  400: { signal: 'SIGBADREQ', label: 'BAD REQUEST', hint: 'The server could not parse your request. Try a different command.' },
-  401: { signal: 'SIGAUTH', label: 'UNAUTHORIZED', hint: 'Authentication required. Use `sudo` or provide valid credentials.' },
-  403: { signal: 'SIGPERM', label: 'PERMISSION DENIED', hint: 'You do not have permission to access this resource. Contact root.' },
-  404: { signal: 'SIGABRT', label: 'FILE NOT FOUND', hint: 'The requested file does not exist in this filesystem. Try `ls -lh` to browse available content.' },
-  405: { signal: 'SIGMETHOD', label: 'METHOD NOT ALLOWED', hint: 'That operation is not permitted on this resource.' },
-  408: { signal: 'SIGTIMEOUT', label: 'REQUEST TIMEOUT', hint: 'The server waited too long. Check your connection and retry.' },
-  429: { signal: 'SIGRATE', label: 'RATE LIMITED', hint: 'Too many requests. Slow down and retry later.' },
-  500: { signal: 'SIGSEGV', label: 'INTERNAL ERROR', hint: 'Something went wrong on the server. The sysadmin has been paged. (Probably.)' },
-  502: { signal: 'SIGPIPE', label: 'BAD GATEWAY', hint: 'Upstream server is unreachable. Check the proxy chain.' },
-  503: { signal: 'SIGSTOP', label: 'SERVICE UNAVAILABLE', hint: 'The service is temporarily down for maintenance. Stand by.' },
+  400: { label: 'Bad request', hint: 'Check the address and try again.' },
+  401: { label: 'Sign in required', hint: 'Sign in to open the admin panel.' },
+  403: { label: 'Permission denied', hint: 'This page requires administrator access.' },
+  404: { label: 'Page not found', hint: 'Check the address or browse the article list.' },
+  405: { label: 'Method not allowed', hint: 'This page does not support the requested action.' },
+  408: { label: 'Request timed out', hint: 'Check your connection and try again.' },
+  429: { label: 'Too many requests', hint: 'Wait a moment and try again.' },
+  500: { label: 'Server error', hint: 'The server could not complete the request. Try again later.' },
+  502: { label: 'Bad gateway', hint: 'The gateway could not get a response from the server. Try again later.' },
+  503: { label: 'Service unavailable', hint: 'The service is temporarily unavailable. Try again later.' },
 }
 
-const def = computed(() => errorDefs[code.value] ?? errorDefs[500])
-const message = computed(() => rawMessage.value || def.value.label)
+const def = computed(() => errorDefs[code.value] ?? { label: 'Request failed', hint: 'Return to the article list to continue.' })
 </script>
 
 <template>
   <div class="error-view">
-    <pre class="error-art">
-========================================
-[ ERROR ]  CODE: {{ code }}  |  SIGNAL: {{ def.signal }}
-========================================
-    </pre>
-
-    <div class="error-label">
-      > {{ message }}
-    </div>
-
+    <p class="error-code"><strong>[ ERROR ]</strong> HTTP {{ code }}</p>
+    <h1 class="error-label">{{ def.label }}</h1>
     <p class="error-hint">{{ def.hint }}</p>
+    <pre v-if="rawMessage" class="dump-block">{{ rawMessage }}</pre>
 
-    <div class="error-dump" v-if="rawMessage">
-      <p>Additional info:</p>
-      <pre class="dump-block">{{ rawMessage }}</pre>
-    </div>
-
-    <nav class="error-nav">
-      <button class="btn" @click="router.push('/')">cd /</button>
+    <nav class="error-nav" aria-label="Error page actions">
+      <RouterLink v-if="code === 401" class="btn" to="/login">SIGN IN</RouterLink>
+      <RouterLink class="btn" to="/">BROWSE ARTICLES</RouterLink>
     </nav>
-
-    <div class="eof-marker">CORE DUMP</div>
   </div>
 </template>
 
 <style scoped>
-.error-view {
-  animation: glitch-in 0.3s ease;
+.error-code {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
 }
 
-.error-art {
-  font-size: 0.72rem;
-  line-height: 1.4;
-  color: var(--muted);
-  margin-bottom: 2rem;
-  white-space: pre;
-  overflow-x: auto;
-}
+.error-code strong { color: var(--danger); }
 
 .error-label {
   font-size: 1.4rem;
@@ -85,17 +68,8 @@ const message = computed(() => rawMessage.value || def.value.label)
   max-width: 600px;
 }
 
-.error-dump {
-  margin-bottom: 2rem;
-}
-
-.error-dump p {
-  font-size: 0.85rem;
-  color: var(--muted);
-  margin-bottom: 0.5rem;
-}
-
 .dump-block {
+  margin-bottom: 1.5rem;
   border: 1px dashed var(--border);
   padding: 1rem;
   font-size: 0.82rem;
@@ -113,21 +87,4 @@ const message = computed(() => rawMessage.value || def.value.label)
   margin-bottom: 3rem;
 }
 
-.eof-marker {
-  text-align: center;
-  font-weight: bold;
-  color: var(--muted);
-  letter-spacing: 4px;
-  font-size: 0.9rem;
-}
-.eof-marker::before { content: "--- [ "; }
-.eof-marker::after { content: " ] ---"; }
-
-@keyframes glitch-in {
-  0%   { opacity: 0; transform: translateX(-2px); }
-  20%  { opacity: 0.5; transform: translateX(2px); }
-  40%  { opacity: 1; transform: translateX(0); }
-  60%  { opacity: 0.8; transform: translateX(-1px); }
-  100% { opacity: 1; transform: translateX(0); }
-}
 </style>

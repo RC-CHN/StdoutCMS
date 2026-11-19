@@ -5,7 +5,7 @@ defineEmits<{ retry: [] }>()
 
 <template>
   <div class="page-state" :class="`state-${mode}`" :aria-busy="mode === 'loading'" :role="mode === 'error' ? 'alert' : 'status'">
-    <span class="state-label">{{ mode === 'loading' ? '[ WAIT ]' : mode === 'error' ? '[ FAIL ]' : '[ EMPTY ]' }}</span>
+    <span class="state-label">{{ mode === 'loading' ? '[ WAIT ]' : mode === 'error' ? '[ ERROR ]' : '[ EMPTY ]' }}</span>
     <p>{{ message }}</p>
     <button v-if="retry" @click="$emit('retry')">RETRY</button>
   </div>

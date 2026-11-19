@@ -65,7 +65,6 @@ function initPlayers(root: HTMLElement) {
     src.addEventListener('loadedmetadata', () => {
       duration = src.duration
       timeEl.textContent = `0:00 / ${fmtTime(duration)}`
-      muteLabel.textContent = `VOL: ${Math.round(src.volume * 100)}%`
     })
 
     src.addEventListener('timeupdate', () => {
@@ -84,7 +83,7 @@ function initPlayers(root: HTMLElement) {
     src.addEventListener('pause', () => { btn.textContent = 'PLAY' })
 
     src.addEventListener('volumechange', () => {
-      muteLabel.textContent = src.muted ? 'MUTE' : `VOL: ${Math.round(src.volume * 100)}%`
+      muteLabel.textContent = src.muted ? 'UNMUTE' : 'MUTE'
     })
 
     btn.addEventListener('click', () => {
@@ -167,7 +166,6 @@ function initPlayers(root: HTMLElement) {
 // ---- collapsible media ----
 
 function initCollapsibles(root: HTMLElement) {
-  // toggle buttons: [+] REVEAL / [-] HIDE
   root.querySelectorAll<HTMLElement>('.md-toggle-btn').forEach(btn => {
     if ((btn as any).__toggleInited) return
     ;(btn as any).__toggleInited = true
@@ -175,8 +173,9 @@ function initCollapsibles(root: HTMLElement) {
     btn.addEventListener('click', () => {
       const fig = btn.closest('.md-media') as HTMLElement | null
       if (!fig) return
-      fig.classList.toggle('is-expanded')
-      btn.textContent = fig.classList.contains('is-expanded') ? '[-] HIDE' : '[+] REVEAL'
+      const expanded = fig.classList.toggle('is-expanded')
+      btn.setAttribute('aria-expanded', String(expanded))
+      btn.textContent = expanded ? 'COLLAPSE' : 'EXPAND'
     })
   })
 
@@ -250,18 +249,20 @@ function initCopyButtons(root: HTMLElement) {
     const code = pre.querySelector<HTMLElement>('code')
     if (!langBar || !code) return
 
-    const btn = document.createElement('span')
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.setAttribute('aria-label', 'Copy code')
     btn.className = 'md-copy-btn'
-    btn.textContent = '[COPY]'
+    btn.textContent = 'COPY'
     langBar.appendChild(btn)
 
     btn.addEventListener('click', async (e) => {
       e.stopPropagation()
       const ok = await copyText(code.innerText)
-      btn.textContent = ok ? '[ OK ]' : '[FAIL]'
+      btn.textContent = ok ? '[ OK ]' : '[ ERROR ]'
       btn.classList.toggle('is-copied', ok)
       setTimeout(() => {
-        btn.textContent = '[COPY]'
+        btn.textContent = 'COPY'
         btn.classList.remove('is-copied')
       }, 1500)
     })
@@ -286,8 +287,8 @@ onMounted(() => nextTick(() => {
     <div v-if="lbOpen" class="lb-backdrop" @click.self="closeLightbox">
       <div class="lb-frame">
         <div class="lb-bar">
-          <span>> viewing: {{ lbAlt }}</span>
-          <button class="lb-close" @click="closeLightbox">[X]</button>
+          <span>{{ lbAlt || 'Image' }}</span>
+          <button class="lb-close" aria-label="Close image" @click="closeLightbox">×</button>
         </div>
         <img :src="lbSrc" :alt="lbAlt" class="lb-image" />
       </div>
@@ -424,11 +425,14 @@ onMounted(() => nextTick(() => {
 }
 
 .article-content :deep(.md-copy-btn) {
+  font-size: inherit;
+  background: transparent;
+  border: 0;
   color: var(--muted);
   font-weight: bold;
   white-space: nowrap;
   user-select: none;
-  cursor: url('/win-95-98/hand.cur'), pointer;
+  cursor: pointer;
 }
 
 .article-content :deep(.md-copy-btn:hover) {
@@ -500,7 +504,7 @@ onMounted(() => nextTick(() => {
   font-weight: bold;
   font-size: 0.7rem;
   padding: 2px 6px;
-  cursor: url('/win-95-98/hand.cur'), pointer;
+  cursor: pointer;
 }
 
 .article-content :deep(.md-toggle-btn:hover) {
@@ -647,7 +651,7 @@ onMounted(() => nextTick(() => {
   font-weight: bold;
   font-size: 0.75rem;
   padding: 0.6rem 0.8rem;
-  cursor: url('/win-95-98/hand.cur'), pointer;
+  cursor: pointer;
   text-transform: uppercase;
   text-align: center;
   min-width: 60px;
@@ -753,7 +757,7 @@ onMounted(() => nextTick(() => {
   color: var(--fg);
   font-family: var(--font-main);
   font-weight: bold;
-  cursor: url('/win-95-98/hand.cur'), pointer;
+  cursor: pointer;
   padding: 2px 6px;
 }
 

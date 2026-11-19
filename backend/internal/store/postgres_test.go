@@ -11,13 +11,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func TestImageCleanupCandidates(t *testing.T) {
+func postgresWithTempTables(t *testing.T, ctx context.Context) *Postgres {
+	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("set TEST_DATABASE_URL to run PostgreSQL integration tests")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
 	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		t.Fatal(err)
@@ -28,9 +27,43 @@ func TestImageCleanupCandidates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pool.Close()
-	pg := &Postgres{pool: pool}
-	if _, err := pool.Exec(ctx, `
+	t.Cleanup(pool.Close)
+	return &Postgres{pool: pool}
+}
+
+func TestListPostSummaries(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	pg := postgresWithTempTables(t, ctx)
+	// Intentionally leave out content so a query that loads post bodies fails.
+	if _, err := pg.pool.Exec(ctx, `
+		CREATE TEMP TABLE posts (slug text, title text, excerpt text, tags text[], created_at timestamptz, published boolean);
+		INSERT INTO posts VALUES
+			('old', 'Old', '', '{}', '2020-01-01', true),
+			('new', 'New', 'Excerpt', '{tag}', '2020-01-02', true),
+			('draft', 'Draft', '', '{}', '2020-01-03', false);
+	`); err != nil {
+		t.Fatal(err)
+	}
+	posts, total, err := pg.ListPostSummaries(ctx, 1, 1)
+	if err != nil || total != 2 || len(posts) != 1 {
+		t.Fatalf("first page = %v, total = %d, err = %v", posts, total, err)
+	}
+	post := posts[0]
+	if post.Slug != "new" || post.Title != "New" || post.Excerpt != "Excerpt" || !slices.Equal(post.Tags, []string{"tag"}) || post.CreatedAt.IsZero() {
+		t.Fatalf("unexpected summary: %+v", post)
+	}
+	posts, total, err = pg.ListPostSummaries(ctx, 3, 1)
+	if err != nil || total != 2 || posts == nil || len(posts) != 0 {
+		t.Fatalf("empty page = %v, total = %d, err = %v", posts, total, err)
+	}
+}
+
+func TestImageCleanupCandidates(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	pg := postgresWithTempTables(t, ctx)
+	if _, err := pg.pool.Exec(ctx, `
 		CREATE TEMP TABLE posts (content text NOT NULL, published boolean NOT NULL);
 		CREATE TEMP TABLE about (content text NOT NULL);
 		CREATE TEMP TABLE image_cleanup_candidates (object_key text PRIMARY KEY);

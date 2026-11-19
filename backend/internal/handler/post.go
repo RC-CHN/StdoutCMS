@@ -27,6 +27,16 @@ func calcReadTime(wordCount int) string {
 
 // ---- Public Posts ----
 
+func cachePostResponse(c *gin.Context, rd *store.Redis, key string, ttl time.Duration, response any) {
+	body, err := json.Marshal(response)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	rd.SetCache(c.Request.Context(), key, body, ttl)
+	c.Data(http.StatusOK, "application/json; charset=utf-8", body)
+}
+
 func ListPosts(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -39,13 +49,26 @@ func ListPosts(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 			size = 10
 		}
 
+		summary := c.Query("view") == "summary"
 		cacheKey := fmt.Sprintf("posts:list:%d:%d", page, size)
+		if summary {
+			cacheKey += ":summary"
+		}
 		if cached, ok := rd.GetCache(ctx, cacheKey); ok {
 			c.Data(http.StatusOK, "application/json", cached)
 			return
 		}
 
-		posts, total, err := pg.ListPosts(ctx, page, size)
+		var (
+			posts any
+			total int
+			err   error
+		)
+		if summary {
+			posts, total, err = pg.ListPostSummaries(ctx, page, size)
+		} else {
+			posts, total, err = pg.ListPosts(ctx, page, size)
+		}
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -56,9 +79,7 @@ func ListPosts(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 			"page":     page,
 			"pageSize": size,
 		}
-		body, _ := json.Marshal(resp)
-		rd.SetCache(ctx, cacheKey, body, 5*time.Minute)
-		c.JSON(http.StatusOK, resp)
+		cachePostResponse(c, rd, cacheKey, 5*time.Minute, resp)
 	}
 }
 
@@ -82,9 +103,7 @@ func GetPost(pg *store.Postgres, rd *store.Redis) gin.HandlerFunc {
 			}
 			return
 		}
-		body, _ := json.Marshal(post)
-		rd.SetCache(ctx, cacheKey, body, 30*time.Minute)
-		c.JSON(http.StatusOK, post)
+		cachePostResponse(c, rd, cacheKey, 30*time.Minute, post)
 	}
 }
 

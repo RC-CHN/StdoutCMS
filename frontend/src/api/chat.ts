@@ -31,6 +31,7 @@ export async function chatStream(
     onDone: (sid: string) => void
     onError: (msg: string) => void
   },
+  signal?: AbortSignal,
 ): Promise<void> {
   const BASE_URL = '/api/v1'
   const token = getToken()
@@ -40,31 +41,43 @@ export async function chatStream(
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(BASE_URL + '/ai/chat', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  })
+  let res: Response
+  try {
+    res = await fetch(BASE_URL + '/ai/chat', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal,
+    })
+  } catch {
+    if (!signal?.aborted) cbs.onError('Could not reach the chat service. Check your connection and try again.')
+    return
+  }
 
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    cbs.onError(data.error || res.statusText)
+    if (res.status === 429) cbs.onError('Daily chat limit reached. Try again tomorrow.')
+    else if (res.status === 400) cbs.onError('Use a shorter question and try again.')
+    else cbs.onError('Chat is unavailable. Try again later.')
     return
   }
 
   const reader = res.body?.getReader()
   if (!reader) {
-    cbs.onError('stream not supported')
+    cbs.onError('Could not open the reply stream. Try again.')
     return
   }
 
   const decoder = new TextDecoder()
   let buffer = ''
+  const interrupted = 'The reply was interrupted. Send your question again.'
 
   try {
     while (true) {
       const { done, value } = await reader.read()
-      if (done) break
+      if (done) {
+        cbs.onError(interrupted)
+        return
+      }
 
       buffer += decoder.decode(value, { stream: true })
       const lines = buffer.split('\n')
@@ -74,8 +87,12 @@ export async function chatStream(
         if (!line.startsWith('data: ')) continue
         try {
           const ev = JSON.parse(line.slice(6))
-          if (ev.done) {
+          if (typeof ev.error === 'string' && ev.error) {
+            cbs.onError(ev.error)
+            return
+          } else if (ev.done) {
             cbs.onDone(ev.sid)
+            return
           } else if (typeof ev.thinking === 'boolean') {
             cbs.onThinking(ev.thinking)
           } else if (ev.delta) {
@@ -86,8 +103,10 @@ export async function chatStream(
         }
       }
     }
-  } catch (e: any) {
-    cbs.onError(e.message || 'stream error')
+  } catch {
+    if (!signal?.aborted) cbs.onError(interrupted)
+  } finally {
+    reader.releaseLock()
   }
 }
 
@@ -111,6 +130,6 @@ export interface GenerateMetaRes {
 }
 
 /** Calls the admin AI endpoint to generate slug / tags / excerpt from title + content. */
-export function generateMeta(body: GenerateMetaReq): Promise<GenerateMetaRes> {
-  return post<GenerateMetaRes>('/admin/ai/generate-meta', body)
+export function generateMeta(body: GenerateMetaReq, signal?: AbortSignal): Promise<GenerateMetaRes> {
+  return post<GenerateMetaRes>('/admin/ai/generate-meta', body, { signal })
 }

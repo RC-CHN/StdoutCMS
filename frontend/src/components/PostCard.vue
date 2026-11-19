@@ -1,85 +1,85 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import type { PostPayload } from '../api/posts'
+import type { PostSummary } from '../api/posts'
 
 defineProps<{
-  post: PostPayload
+  post: PostSummary
 }>()
 </script>
 
 <template>
   <article class="post-card">
+    <h2 class="post-heading">
+      <RouterLink :to="`/article/${post.slug}`" class="post-title">{{ post.title }}</RouterLink>
+    </h2>
+    <p v-if="post.excerpt" class="post-excerpt">{{ post.excerpt }}</p>
     <div class="post-meta">
-      <time :datetime="post.createdAt">{{ post.createdAt ? post.createdAt.slice(0, 10) : '—' }}</time>
-      <span>TAGS: [{{ (post.tags || []).join(', ') }}]</span>
+      <time v-if="post.createdAt" :datetime="post.createdAt">{{ post.createdAt.slice(0, 10) }}</time>
+      <span v-if="post.tags?.length">{{ post.tags.join(' / ') }}</span>
+      <RouterLink :to="`/article/${post.slug}`" class="read-link command" :aria-label="`Read ${post.title}`">./read.elf</RouterLink>
     </div>
-    <RouterLink :to="`/article/${post.slug}`" class="post-title">{{ post.title }}</RouterLink>
-    <div class="post-excerpt">{{ post.excerpt }}</div>
-    <RouterLink :to="`/article/${post.slug}`" class="btn">READ_MORE.EXE</RouterLink>
   </article>
 </template>
 
 <style scoped>
 .post-card {
-  border: 2px solid var(--border);
-  background: var(--bg);
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  box-shadow: var(--shadow);
-  transition: transform 0.2s, box-shadow 0.2s;
-  position: relative;
+  padding: 0.75rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
 }
 
-.post-card:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 7px 7px 0px var(--border);
-}
+.post-card + .post-card { margin-top: 0.75rem; }
 
-.post-card::before {
-  content: "";
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 15px;
-  height: 15px;
-  border-top: 2px solid var(--border);
-  border-right: 2px solid var(--border);
-}
-
-.post-meta {
-  font-size: 0.85rem;
-  color: var(--muted);
-  margin-bottom: 0.8rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 15px;
-  border-bottom: 1px dotted var(--muted);
-  padding-bottom: 5px;
+.post-heading {
+  font-size: clamp(1.3rem, 2vw, 1.6rem);
+  line-height: 1.35;
 }
 
 .post-title {
-  font-size: 1.4rem;
   color: var(--fg);
   text-decoration: none;
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: bold;
-}
-
-.post-title:hover {
-  text-decoration: underline;
 }
 
 .post-excerpt {
+  margin-top: 0.45rem;
   font-family: var(--font-reading);
+  color: var(--fg);
+}
+
+.post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
   color: var(--muted);
-  margin-bottom: 1rem;
+}
+
+.post-meta time, .read-link { white-space: nowrap; }
+
+.read-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  margin-inline-start: auto;
+  color: var(--fg);
+  text-underline-offset: 0.2em;
+}
+
+.post-title:is(:hover, :focus-visible),
+.read-link:is(:hover, :focus-visible) {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 @media (max-width: 600px) {
-  .post-card { padding: 1rem; }
-  .post-meta { font-size: 0.75rem; }
-  .post-meta time { white-space: nowrap; }
-  .post-title { font-size: 1.25rem; line-height: 1.5; }
+  .post-title {
+    display: inline-block;
+    max-width: 100%;
+    padding-block: 0.5rem;
+  }
+  .read-link { min-height: 44px; }
 }
 </style>

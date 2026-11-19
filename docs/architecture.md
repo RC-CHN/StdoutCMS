@@ -1,4 +1,4 @@
-# SYS_BLOG.EXE — 架构设计
+# STDOUT_CMS_ELF — 架构设计
 
 ## 概述
 
@@ -93,6 +93,8 @@ GET   /api/v1/posts/:slug     单篇文章全文
 GET   /api/v1/projects        项目列表
 GET   /api/v1/projects/:id    单个项目详情
 ```
+
+`GET /api/v1/posts` 支持 `view=summary`。每条摘要包含 `slug`、`title`、`tags`、`createdAt` 和可选的 `excerpt`。首页每页取 3 篇摘要，文章目录首次显示时取最近 50 篇摘要。省略 `view` 时仍返回含正文的原有格式。
 
 ### 管理接口 (需要 session)
 

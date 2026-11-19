@@ -20,10 +20,12 @@ async function handleLogout() {
   router.push('/')
 }
 const typeText = computed(() => {
-  if (route.name === 'article') return 'reading document'
-  if (route.name === 'about') return 'cat about.md'
-  if (route.name === 'projects') return 'projects.sh'
-  return 'ONLINE & READY'
+  if (route.meta.requiresAuth) return '# cd ~/admin'
+  if (route.name === 'article') return `$ cat ~/articles/${route.params.slug}.md`
+  if (route.name === 'about') return '$ cat ~/about.md'
+  if (route.name === 'projects') return '$ ls ~/projects/'
+  if (route.name === 'login') return '$ login'
+  return '$ ./stdoutcms.elf'
 })
 const displayed = ref('')
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -67,8 +69,8 @@ onUnmounted(() => {
       <div class="status-line" aria-hidden="true">{{ displayed }}<span class="cursor"></span></div>
     </div>
     <div class="header-actions">
-      <button v-if="isLoggedIn" class="logout-btn" @click="handleLogout"><span class="wide-label">[ LOGOUT ]</span><span class="compact-label">EXIT</span></button>
-      <button class="theme-btn" @click="toggleTheme" :aria-label="dark ? 'Switch to light theme' : 'Switch to dark theme'" :aria-pressed="dark">
+      <button v-if="isLoggedIn" class="logout-btn" @click="handleLogout">Sign out</button>
+      <button class="theme-btn" @click="toggleTheme" :aria-label="dark ? 'Switch to light theme' : 'Switch to dark theme'">
         <span class="wide-label">[ {{ dark ? 'LIGHT' : 'DARK' }} ]</span>
         <span class="compact-label" aria-hidden="true">{{ dark ? '☀' : '◐' }}</span>
       </button>

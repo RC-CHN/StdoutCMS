@@ -15,7 +15,7 @@ async function loadProjects() {
     const data = await listProjects()
     projects.value = data.projects || []
   } catch {
-    error.value = 'Could not load projects. Please try again.'
+    error.value = 'Could not load projects.'
   } finally {
     loading.value = false
   }
@@ -24,11 +24,11 @@ onMounted(loadProjects)
 </script>
 
 <template>
-  <h1 class="projects-title">> projects/__init__.py</h1>
+  <h1 class="projects-title">~/projects/</h1>
 
   <PageState v-if="loading" mode="loading" message="Loading projects…" />
   <PageState v-else-if="error" mode="error" :message="error" retry @retry="loadProjects" />
-  <PageState v-else-if="!projects.length" mode="empty" message="No projects to show yet." />
+  <PageState v-else-if="!projects.length" mode="empty" message="No projects listed yet." />
 
   <template v-else>
   <div class="project-card" v-for="p in projects" :key="p.name">
@@ -38,10 +38,11 @@ onMounted(loadProjects)
       <span>LANG: {{ p.lang }}</span>
       <span>STATUS: {{ p.status }}</span>
     </div>
-    <a :href="p.url" class="btn" target="_blank">VIEW_REPO.EXE</a>
+    <a v-if="p.url" :href="p.url" class="btn command" target="_blank" rel="noopener"
+      :aria-label="`Open ${p.name} in a new tab`">./open-project.elf</a>
   </div>
 
-  <div class="eof-marker">EOF</div>
+  <div class="eof-marker" aria-hidden="true">— EOF —</div>
   </template>
 </template>
 
@@ -92,33 +93,5 @@ onMounted(loadProjects)
   font-weight: bold;
   color: var(--muted);
   letter-spacing: 5px;
-}
-.eof-marker::before { content: "--- [ "; }
-.eof-marker::after { content: " ] ---"; }
-
-.page-nav {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  border-top: 2px dashed var(--border);
-  padding-top: 2rem;
-}
-
-.page-info {
-  font-size: 0.85rem;
-  color: var(--muted);
-  min-width: 60px;
-  text-align: center;
-}
-
-button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-button:disabled:hover {
-  background: var(--bg);
-  color: var(--fg);
 }
 </style>

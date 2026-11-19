@@ -14,7 +14,7 @@ import { useEditorUploads } from '../../composables/useEditorUploads'
 import { useImagePaste } from '../../composables/useImagePaste'
 
 const about = ref<AboutPayload>({ title: '', content: '' })
-const status = ref('')
+const isNew = ref(false)
 const saving = ref(false)
 const loading = ref(true)
 const loadError = ref('')
@@ -42,10 +42,10 @@ async function loadAbout() {
   try {
     const data = await getAboutAdmin()
     about.value = data
-    status.value = 'loaded: about'
+    isNew.value = false
   } catch (cause) {
-    if (cause instanceof ApiError && cause.status === 404) status.value = 'creating new about'
-    else loadError.value = 'Could not load About. Retry before editing.'
+    if (cause instanceof ApiError && cause.status === 404) isNew.value = true
+    else loadError.value = 'Could not load the About page.'
   } finally {
     loading.value = false
   }
@@ -58,11 +58,10 @@ async function handleSave() {
   saving.value = true
   try {
     await updateAbout(about.value)
-    status.value = 'saved: about'
-    showFeedback('about saved', 'ok')
+    isNew.value = false
+    showFeedback('Saved about.md.', 'ok')
   } catch (e: any) {
-    status.value = 'ERROR: ' + (e.message || 'save failed')
-    showFeedback(e.message || 'save failed', 'err')
+    showFeedback(e.message || 'Could not save the About page.', 'err')
   } finally {
     saving.value = false
   }
@@ -74,18 +73,15 @@ async function handleSave() {
 
   <div class="editor-header">
     <div class="editor-prompt">
-      root@k8s-node ~/admin $ <span class="muted">vim about.md</span>
-    </div>
-    <div class="editor-status" :class="{ 'status-error': status.startsWith('ERROR') }">
-      {{ status || 'READY' }}
+      root@stdoutcms:~/admin# <span class="muted">vim about.md</span>
     </div>
   </div>
 
-  <PageState v-if="loading" mode="loading" message="Loading About…" />
+  <PageState v-if="loading" mode="loading" message="Loading the About page…" />
   <PageState v-else-if="loadError" mode="error" :message="loadError" retry @retry="loadAbout" />
   <div class="meta-panel">
     <div class="meta-row">
-      <label for="about-title">TITLE:</label>
+      <label for="about-title">TITLE</label>
       <input id="about-title" v-model="about.title" :disabled="loading || !!loadError || saving" type="text" placeholder="About page title" />
     </div>
   </div>
@@ -96,22 +92,23 @@ async function handleSave() {
   </div>
   <div class="editor-split">
     <div v-show="!isMobile || !preview" class="editor-pane">
-      <div class="pane-label">RAW // MARKDOWN</div>
+      <div class="pane-label">MARKDOWN</div>
       <textarea
         v-model="about.content"
         :disabled="loading || !!loadError || saving"
         aria-label="About content"
         class="editor-textarea"
-          ref="textareaRef"
-        placeholder="Write your about page in markdown..."
+        ref="textareaRef"
+        placeholder="Write your About page in Markdown…"
         spellcheck="false"
       />
     </div>
     <div v-show="!isMobile || preview" class="preview-pane">
-      <div class="pane-label">PREVIEW // RENDERED</div>
+      <div class="pane-label">PREVIEW</div>
       <div class="preview-scroll">
-        <MobileArticleRenderer v-if="isMobile" :content="about.content" />
-        <ArticleRenderer v-else :content="about.content" />
+        <KeepAlive :max="1">
+          <component v-if="!loading && !loadError && (!isMobile || preview)" :is="isMobile ? MobileArticleRenderer : ArticleRenderer" :content="about.content" />
+        </KeepAlive>
       </div>
     </div>
   </div>
@@ -119,7 +116,7 @@ async function handleSave() {
   <UploadStatus :uploads="uploads" />
   <div class="editor-actions">
     <button class="btn" :disabled="loading || !!loadError || saving || uploads.uploading.value || !!uploads.failures.value.length" @click="handleSave">
-      {{ saving ? '[ SAVING... ]' : '[ SAVE ]' }}
+      {{ saving ? 'SAVING…' : isNew ? 'CREATE PAGE' : 'SAVE CHANGES' }}
     </button>
   </div>
 
@@ -135,8 +132,6 @@ async function handleSave() {
 .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem; }
 .editor-prompt { font-weight: bold; font-size: 0.95rem; }
 .muted { color: var(--muted); }
-.editor-status { font-size: 0.8rem; font-weight: bold; padding: 2px 8px; border: 1px solid var(--border); color: var(--muted); }
-.status-error { background: #ff4444; color: #fff !important; }
 .meta-panel { border: 2px solid var(--border); padding: 1rem; margin-bottom: 1.5rem; background: var(--bg); box-shadow: var(--shadow); }
 .meta-row { display: flex; align-items: center; gap: 10px; }
 .meta-row label { font-weight: bold; font-size: 0.85rem; min-width: 60px; color: var(--muted); }

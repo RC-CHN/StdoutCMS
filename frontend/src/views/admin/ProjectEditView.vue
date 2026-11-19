@@ -5,6 +5,7 @@ import { listProjectsAdmin, createProject, updateProject } from '../../api/proje
 import type { ProjectPayload } from '../../api/projects'
 import AdminNav from '../../components/AdminNav.vue'
 import TerminalFeedback from '../../components/TerminalFeedback.vue'
+import PageState from '../../components/PageState.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,7 +21,8 @@ const project = ref<ProjectPayload>({
   url: '',
   sortOrder: 0,
 })
-const status = ref('')
+const loading = ref(isEdit)
+const loadError = ref('')
 const saving = ref(false)
 const feedbackMsg = ref<string | null>(null)
 const feedbackType = ref<'ok' | 'err'>('ok')
@@ -32,40 +34,36 @@ function showFeedback(msg: string, type: 'ok' | 'err') {
   feedbackTrigger.value++
 }
 
-onMounted(async () => {
-  if (isEdit) {
-    try {
-      const data = await listProjectsAdmin()
-      const id = parseInt(idParam!)
-      const found = data.projects.find(p => p.id === id)
-      if (found) {
-        project.value = { ...found }
-        status.value = `loaded: ${project.value.name}`
-      } else {
-        status.value = 'ERROR: project not found'
-      }
-    } catch (e: any) {
-      status.value = 'ERROR: ' + e.message
-    }
+async function loadProject() {
+  if (!isEdit) return
+  loading.value = true
+  loadError.value = ''
+  try {
+    const data = await listProjectsAdmin()
+    const found = data.projects.find(p => p.id === Number(idParam))
+    if (found) project.value = { ...found }
+    else loadError.value = 'Project not found.'
+  } catch {
+    loadError.value = 'Could not load this project.'
+  } finally {
+    loading.value = false
   }
-})
+}
+onMounted(loadProject)
 
 async function handleSave() {
   saving.value = true
   try {
     if (isEdit) {
       await updateProject(project.value.id, project.value)
-      status.value = `SAVED: ${project.value.name}`
-      showFeedback(`${project.value.name} saved`, 'ok')
+      showFeedback(`Saved ${project.value.name}.`, 'ok')
     } else {
       await createProject(project.value)
-      status.value = `CREATED: ${project.value.name}`
-      showFeedback(`${project.value.name} created`, 'ok')
+      showFeedback(`Created ${project.value.name}.`, 'ok')
       router.push('/admin/projects')
     }
   } catch (e: any) {
-    status.value = 'ERROR: ' + (e.message || 'save failed')
-    showFeedback(e.message || 'save failed', 'err')
+    showFeedback(e.message || 'Could not save this project.', 'err')
   } finally {
     saving.value = false
   }
@@ -77,49 +75,48 @@ async function handleSave() {
 
   <div class="editor-header">
     <div class="editor-prompt">
-      root@k8s-node ~/admin $ <span class="muted">{{ isEdit ? `vim project_${idParam}.sh` : 'vim new_project.sh' }}</span>
-    </div>
-    <div class="editor-status" :class="{ 'status-error': status.startsWith('ERROR') }">
-      {{ status || 'READY' }}
+      root@stdoutcms:~/admin# <span class="muted">./projects.elf {{ isEdit ? `edit ${idParam}` : 'new' }}</span>
     </div>
   </div>
 
-  <div class="meta-panel">
+  <PageState v-if="loading" mode="loading" message="Loading project…" />
+  <PageState v-else-if="loadError" mode="error" :message="loadError" retry @retry="loadProject" />
+  <div v-else class="meta-panel">
     <div class="meta-row">
-      <label>NAME:</label>
-      <input v-model="project.name" type="text" placeholder="project name" />
+      <label for="project-name">NAME</label>
+      <input id="project-name" v-model="project.name" type="text" placeholder="Project name" />
     </div>
     <div class="meta-row">
-      <label>DESC:</label>
-      <input v-model="project.description" type="text" placeholder="short description" />
+      <label for="project-description">DESCRIPTION</label>
+      <input id="project-description" v-model="project.description" type="text" placeholder="Short description" />
     </div>
     <div class="meta-row">
-      <label>LANG:</label>
-      <input v-model="project.lang" type="text" placeholder="Go / TypeScript / Python" />
+      <label for="project-language">LANGUAGE</label>
+      <input id="project-language" v-model="project.lang" type="text" placeholder="Go, TypeScript, Python…" />
     </div>
     <div class="meta-row">
-      <label>STATUS:</label>
-      <select v-model="project.status">
+      <label for="project-status">STATUS</label>
+      <select id="project-status" v-model="project.status">
         <option>active</option>
         <option>archived</option>
         <option>wip</option>
       </select>
     </div>
     <div class="meta-row">
-      <label>URL:</label>
-      <input v-model="project.url" type="text" placeholder="https://github.com/..." />
+      <label for="project-url">URL</label>
+      <input id="project-url" v-model="project.url" type="text" placeholder="https://github.com/..." />
     </div>
     <div class="meta-row">
-      <label>SORT:</label>
-      <input v-model.number="project.sortOrder" type="number" placeholder="0" />
+      <label for="project-sort">SORT ORDER</label>
+      <input id="project-sort" v-model.number="project.sortOrder" type="number" placeholder="0" />
     </div>
   </div>
 
   <div class="editor-actions">
-    <button class="btn btn-sm" @click="handleSave" :disabled="saving">
-      {{ saving ? '[ SAVING... ]' : '[ SAVE ]' }}
+    <button v-if="!loading && !loadError" class="btn btn-sm" @click="handleSave" :disabled="saving">
+      {{ saving ? 'SAVING…' : isEdit ? 'SAVE CHANGES' : 'CREATE PROJECT' }}
     </button>
-    <RouterLink to="/admin/projects" class="btn btn-sm">cd ..</RouterLink>
+    <RouterLink to="/admin/projects" class="btn btn-sm">BACK TO PROJECTS</RouterLink>
   </div>
 
   <TerminalFeedback
@@ -134,12 +131,10 @@ async function handleSave() {
 .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem; }
 .editor-prompt { font-weight: bold; font-size: 0.95rem; }
 .muted { color: var(--muted); }
-.editor-status { font-size: 0.8rem; font-weight: bold; padding: 2px 8px; border: 1px solid var(--border); color: var(--muted); }
-.status-error { background: #ff4444; color: #fff !important; }
 .meta-panel { border: 2px solid var(--border); padding: 1.5rem; margin-bottom: 1.5rem; background: var(--bg); box-shadow: var(--shadow); }
 .meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
 .meta-row:last-child { margin-bottom: 0; }
-.meta-row label { font-weight: bold; font-size: 0.85rem; min-width: 60px; color: var(--muted); }
+.meta-row label { font-weight: bold; font-size: 0.85rem; min-width: 100px; color: var(--muted); }
 .meta-row input, .meta-row select { flex: 1; background: var(--bg); color: var(--fg); border: 1px solid var(--border); padding: 6px 10px; font-family: var(--font-main); font-size: 0.9rem; outline: none; }
 .meta-row input:focus, .meta-row select:focus { border-width: 2px; }
 .editor-actions { display: flex; gap: 10px; align-items: center; border-top: 2px dashed var(--border); padding-top: 1.5rem; }

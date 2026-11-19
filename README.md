@@ -3,8 +3,7 @@
 > A terminal-style / brutalist personal blog CMS.
 
 ```
-root@k8s-node ~ $ ./STDOUT_CMS_ELF --help
-STATELESS *** ALL GREEN *** 0 TRACKERS *** 0 ANALYTICS
+guest@stdoutcms:~$ ./stdoutcms.elf
 ```
 
 ---
@@ -37,7 +36,7 @@ Open `http://localhost:8080`. Admin panel at `/admin` (default: `root` / `root`)
 
 ## Features
 
-- **Terminal UI** — `$ ls -lh` sidebar, typewriter header, marquee footer
+- **Terminal UI** — `$ ls -lh` sidebar, typewriter header, site statistics in the footer
 - **Markdown posts** — slug-based URLs, tags, word count, read time
 - **Project showcase** — lang / status / url fields
 - **About page** — standalone singleton page
@@ -46,7 +45,7 @@ Open `http://localhost:8080`. Admin panel at `/admin` (default: `root` / `root`)
 - **Reading navigation** — article contents, pagination and scroll restoration, mobile sharing
 - **Mobile editing** — single-pane edit/preview, accessible post actions, retryable uploads
 - **Image paste** — paste images directly into the editor, uploaded to MinIO
-- **Dark mode** — `[ INVERT_COLORS ]` toggle, persists to localStorage
+- **Dark mode** — `[ DARK ] / [ LIGHT ]` toggle, persists to localStorage
 - **AI chat** (optional) — SSE streaming chat widget, article-aware context
 - **AI metadata** (optional) — auto-generate slug / tags / excerpt from content
 

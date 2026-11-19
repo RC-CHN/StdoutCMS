@@ -2,6 +2,7 @@ const BASE_URL = '/api/v1'
 
 export interface RequestOptions {
   redirectOnUnauthorized?: boolean
+  signal?: AbortSignal
 }
 
 export class ApiError extends Error {
@@ -52,6 +53,7 @@ async function request<T>(
   const res = await fetch(BASE_URL + path, {
     method,
     headers,
+    signal: options.signal,
     credentials: 'include', // send HttpOnly cookie set by backend
     body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
   })

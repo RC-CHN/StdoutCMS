@@ -124,14 +124,16 @@ func (r *Redis) ChatGetHistory(ctx context.Context, sid string) ([]string, error
 	return result, nil
 }
 
-// ChatPushMessage pushes a JSON-encoded message onto the session list,
-// trims to chatHistoryLimit rounds (×2 messages), and refreshes TTL.
-func (r *Redis) ChatPushMessage(ctx context.Context, sid string, msg string, ttl time.Duration) error {
+// ChatAppendTurn saves both messages and the article context together after generation completes.
+func (r *Redis) ChatAppendTurn(ctx context.Context, sid, user, assistant, articleSlug string, ttl time.Duration) error {
 	key := "chat:session:" + sid
-	pipe := r.client.Pipeline()
-	pipe.LPush(ctx, key, msg)
+	pipe := r.client.TxPipeline()
+	pipe.LPush(ctx, key, user, assistant)
 	pipe.LTrim(ctx, key, 0, chatHistoryLimit*2-1) // 2 messages per round
 	pipe.Expire(ctx, key, ttl)
+	if articleSlug != "" {
+		pipe.Set(ctx, key+":ctx", articleSlug, ttl)
+	}
 	_, err := pipe.Exec(ctx)
 	return err
 }
@@ -156,9 +158,4 @@ func (r *Redis) ChatDailyQuota(ctx context.Context, limit int) (int64, bool) {
 // ChatGetLastCtx returns the article slug last injected for this session.
 func (r *Redis) ChatGetLastCtx(ctx context.Context, sid string) (string, error) {
 	return r.client.Get(ctx, "chat:session:"+sid+":ctx").Result()
-}
-
-// ChatSetLastCtx records the current article slug for this session with the same TTL as the session.
-func (r *Redis) ChatSetLastCtx(ctx context.Context, sid string, slug string, ttl time.Duration) error {
-	return r.client.Set(ctx, "chat:session:"+sid+":ctx", slug, ttl).Err()
 }

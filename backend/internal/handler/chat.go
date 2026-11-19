@@ -3,9 +3,11 @@ package handler
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
@@ -29,6 +31,7 @@ type ChatRequest struct {
 // streamEvent is the JSON object sent per SSE chunk to the frontend.
 type streamEvent struct {
 	Delta    string `json:"delta,omitempty"`
+	Error    string `json:"error,omitempty"`
 	Thinking bool   `json:"thinking,omitempty"` // model is in reasoning phase
 	Done     bool   `json:"done,omitempty"`
 	Sid      string `json:"sid"`
@@ -64,7 +67,7 @@ func Chat(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.HandlerFu
 			return
 		}
 		if len(req.Q) > 500 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "q too long, max 500 chars"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Question exceeds the 500-byte limit."})
 			return
 		}
 		if _, ok := rd.ChatDailyQuota(ctx, cfg.LLM.DailyLimit); !ok {
@@ -95,7 +98,7 @@ func AdminChat(pg *store.Postgres, rd *store.Redis, cfg *config.Config) gin.Hand
 			return
 		}
 		if len(req.Q) > 500 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "q too long, max 500 chars"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Question exceeds the 500-byte limit."})
 			return
 		}
 
@@ -156,7 +159,6 @@ func handleChatStream(c *gin.Context, rd *store.Redis, cfg *config.Config, sid, 
 			chatMessage{Role: "user", Content: buildArticleContext(post)},
 			chatMessage{Role: "assistant", Content: "已了解文章内容，请问。"},
 		)
-		_ = rd.ChatSetLastCtx(ctx, sid, currentCtx, time.Hour)
 	}
 
 	for _, raw := range history {
@@ -177,21 +179,24 @@ func handleChatStream(c *gin.Context, rd *store.Redis, cfg *config.Config, sid, 
 	c.Header("X-Accel-Buffering", "no")
 
 	// stream LLM response
-	fullText, err := callLLMStream(cfg, messages, sid, c.Writer)
+	fullText, err := callLLMStream(ctx, cfg, messages, sid, c.Writer)
 	if err != nil {
-		sendSSE(c.Writer, streamEvent{Sid: sid, Delta: fmt.Sprintf("\n[ERROR: %v]", err)})
+		if ctx.Err() != nil {
+			return
+		}
+		slog.ErrorContext(ctx, "chat response interrupted", "error", err)
+		const message = "The chat response was interrupted. Please try again."
+		sendSSE(c.Writer, streamEvent{Sid: sid, Error: message, Delta: "\n[ ERROR ] " + message})
 		sendSSE(c.Writer, streamEvent{Done: true, Sid: sid})
 		return
 	}
 
-	// done event
-	sendSSE(c.Writer, streamEvent{Done: true, Sid: sid})
-
-	// persist user + assistant to Redis
 	userJSON, _ := json.Marshal(userMsg)
 	assistantJSON, _ := json.Marshal(chatMessage{Role: "assistant", Content: fullText})
-	_ = rd.ChatPushMessage(ctx, sid, string(userJSON), time.Hour)
-	_ = rd.ChatPushMessage(ctx, sid, string(assistantJSON), time.Hour)
+	if err := rd.ChatAppendTurn(ctx, sid, string(userJSON), string(assistantJSON), currentCtx, time.Hour); err != nil {
+		slog.WarnContext(ctx, "could not save chat history", "error", err)
+	}
+	sendSSE(c.Writer, streamEvent{Done: true, Sid: sid})
 }
 
 // ---- helpers ----
@@ -205,7 +210,7 @@ func sendSSE(w gin.ResponseWriter, ev streamEvent) {
 // callLLMStream sends a streaming request to the OpenAI-compatible endpoint,
 // forwarding each content delta as an SSE event to the client.
 // Returns the full assembled response text.
-func callLLMStream(cfg *config.Config, messages []chatMessage, sid string, w gin.ResponseWriter) (string, error) {
+func callLLMStream(ctx context.Context, cfg *config.Config, messages []chatMessage, sid string, w gin.ResponseWriter) (string, error) {
 	body := openAIRequest{
 		Model:    cfg.LLM.Model,
 		Messages: messages,
@@ -218,7 +223,7 @@ func callLLMStream(cfg *config.Config, messages []chatMessage, sid string, w gin
 	}
 
 	url := strings.TrimRight(cfg.LLM.Endpoint, "/") + "/chat/completions"
-	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
 		return "", err
 	}
@@ -371,8 +376,12 @@ func GenerateMeta(cfg *config.Config) gin.HandlerFunc {
 			{Role: "user", Content: fmt.Sprintf("Title: %s\n\nContent:\n%s", req.Title, content)},
 		}
 
-		raw, err := callLLMNonStream(cfg, messages)
+		ctx := c.Request.Context()
+		raw, err := callLLMNonStream(ctx, cfg, messages)
 		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("llm call failed: %v", err)})
 			return
 		}
@@ -439,7 +448,7 @@ type openAINonStreamResponse struct {
 // callLLMNonStream sends a single-turn request to the LLM and returns the
 // full response text. Used for metadata generation where we need the complete
 // result at once (not delta-by-delta).
-func callLLMNonStream(cfg *config.Config, messages []chatMessage) (string, error) {
+func callLLMNonStream(ctx context.Context, cfg *config.Config, messages []chatMessage) (string, error) {
 	body := openAIRequest{
 		Model:    cfg.LLM.Model,
 		Messages: messages,
@@ -452,7 +461,7 @@ func callLLMNonStream(cfg *config.Config, messages []chatMessage) (string, error
 	}
 
 	url := strings.TrimRight(cfg.LLM.Endpoint, "/") + "/chat/completions"
-	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
 		return "", err
 	}

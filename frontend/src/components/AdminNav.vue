@@ -5,15 +5,15 @@ const route = useRoute()
 </script>
 
 <template>
-  <nav class="admin-nav">
+  <nav class="admin-nav" aria-label="Admin">
     <RouterLink to="/admin" class="admin-nav-item" :class="{ active: !route.name?.toString().includes('projects') && !route.name?.toString().includes('about') && route.name?.toString().startsWith('admin') }">
-      [ posts ]
+      Articles
     </RouterLink>
     <RouterLink to="/admin/projects" class="admin-nav-item" :class="{ active: !!route.name?.toString().startsWith('admin-projects') }">
-      [ projects ]
+      Projects
     </RouterLink>
     <RouterLink to="/admin/about" class="admin-nav-item" :class="{ active: route.name === 'admin-about' }">
-      [ about ]
+      About
     </RouterLink>
   </nav>
 </template>

@@ -17,6 +17,14 @@ type Post struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
+type PostSummary struct {
+	Slug      string    `json:"slug"`
+	Title     string    `json:"title"`
+	Excerpt   string    `json:"excerpt,omitempty"`
+	Tags      []string  `json:"tags"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
 type Project struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`

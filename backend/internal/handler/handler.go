@@ -42,8 +42,7 @@ var startTime = time.Now()
 func Meta(pg *store.Postgres, llmEnabled bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		posts, _ := pg.CountPosts(ctx)
-		projects, _ := pg.CountProjects(ctx)
+		posts, projects, _ := pg.SiteCounts(ctx)
 		c.JSON(http.StatusOK, MetaResponse{
 			App:       "STDOUT_CMS_ELF",
 			Version:   Version,
