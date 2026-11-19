@@ -46,13 +46,14 @@ onMounted(loadAbout)
       <MobileArticleRenderer v-if="isMobile" :content="about.content" />
       <ArticleRenderer v-else :content="about.content" />
     </article>
-    <div class="eof-marker" aria-hidden="true">— EOF —</div>
+    <div class="eof-marker" aria-hidden="true">EOF</div>
   </template>
   </div>
 </template>
 
 <style scoped>
 .prompt-line { margin-bottom: 2rem; font-weight: bold; }
+.status-line { color: var(--muted); font-size: 0.85rem; }
 
 /* ---- ASCII box header ---- */
 .about-header {
@@ -65,6 +66,19 @@ onMounted(loadAbout)
   background: var(--bg);
 }
 
+.about-header::before {
+  content: "[ ABOUT.TXT ]";
+  position: absolute;
+  top: -0.65rem;
+  left: 1.5rem;
+  background: var(--bg);
+  padding: 0 8px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
 .about-title {
   font-size: 1.8rem;
   font-weight: bold;
@@ -74,4 +88,6 @@ onMounted(loadAbout)
 }
 
 .eof-marker { text-align: center; margin: 4rem 0 2rem 0; font-weight: bold; color: var(--muted); letter-spacing: 5px; }
+.eof-marker::before { content: "--- [ "; }
+.eof-marker::after { content: " ] ---"; }
 </style>

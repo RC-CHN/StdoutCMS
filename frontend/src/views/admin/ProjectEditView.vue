@@ -77,6 +77,9 @@ async function handleSave() {
     <div class="editor-prompt">
       root@stdoutcms:~/admin# <span class="muted">./projects.elf {{ isEdit ? `edit ${idParam}` : 'new' }}</span>
     </div>
+    <div class="editor-status" :class="{ 'status-error': loadError }" aria-hidden="true">
+      {{ loading ? '[ WAIT ]' : loadError ? '[ ERROR ]' : '[ READY ]' }}
+    </div>
   </div>
 
   <PageState v-if="loading" mode="loading" message="Loading project…" />
@@ -131,10 +134,12 @@ async function handleSave() {
 .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem; }
 .editor-prompt { font-weight: bold; font-size: 0.95rem; }
 .muted { color: var(--muted); }
+.editor-status { font-size: 0.8rem; font-weight: bold; padding: 2px 8px; border: 1px solid var(--border); color: var(--muted); }
+.status-error { background: #ff4444; color: #fff !important; }
 .meta-panel { border: 2px solid var(--border); padding: 1.5rem; margin-bottom: 1.5rem; background: var(--bg); box-shadow: var(--shadow); }
 .meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
 .meta-row:last-child { margin-bottom: 0; }
-.meta-row label { font-weight: bold; font-size: 0.85rem; min-width: 100px; color: var(--muted); }
+.meta-row label { font-weight: bold; font-size: 0.85rem; min-width: 60px; color: var(--muted); }
 .meta-row input, .meta-row select { flex: 1; background: var(--bg); color: var(--fg); border: 1px solid var(--border); padding: 6px 10px; font-family: var(--font-main); font-size: 0.9rem; outline: none; }
 .meta-row input:focus, .meta-row select:focus { border-width: 2px; }
 .editor-actions { display: flex; gap: 10px; align-items: center; border-top: 2px dashed var(--border); padding-top: 1.5rem; }

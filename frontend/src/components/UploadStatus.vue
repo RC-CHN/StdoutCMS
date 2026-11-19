@@ -20,6 +20,5 @@ const { pending, failures } = props.uploads
 <style scoped>
 .upload-status { padding: 0.8rem; margin-block: 0.75rem; border: 1px dashed var(--border); overflow-wrap: anywhere; }
 .upload-error { border-color: var(--danger); }
-.upload-error strong { color: var(--danger); }
 .state-actions { margin-top: 0.5rem; }
 </style>

@@ -65,6 +65,7 @@ function initPlayers(root: HTMLElement) {
     src.addEventListener('loadedmetadata', () => {
       duration = src.duration
       timeEl.textContent = `0:00 / ${fmtTime(duration)}`
+      muteLabel.textContent = `VOL: ${Math.round(src.volume * 100)}%`
     })
 
     src.addEventListener('timeupdate', () => {
@@ -83,7 +84,7 @@ function initPlayers(root: HTMLElement) {
     src.addEventListener('pause', () => { btn.textContent = 'PLAY' })
 
     src.addEventListener('volumechange', () => {
-      muteLabel.textContent = src.muted ? 'UNMUTE' : 'MUTE'
+      muteLabel.textContent = src.muted ? 'UNMUTE' : `VOL: ${Math.round(src.volume * 100)}%`
     })
 
     btn.addEventListener('click', () => {
@@ -175,7 +176,7 @@ function initCollapsibles(root: HTMLElement) {
       if (!fig) return
       const expanded = fig.classList.toggle('is-expanded')
       btn.setAttribute('aria-expanded', String(expanded))
-      btn.textContent = expanded ? 'COLLAPSE' : 'EXPAND'
+      btn.textContent = expanded ? '[-] COLLAPSE' : '[+] EXPAND'
     })
   })
 
@@ -253,7 +254,7 @@ function initCopyButtons(root: HTMLElement) {
     btn.type = 'button'
     btn.setAttribute('aria-label', 'Copy code')
     btn.className = 'md-copy-btn'
-    btn.textContent = 'COPY'
+    btn.textContent = '[COPY]'
     langBar.appendChild(btn)
 
     btn.addEventListener('click', async (e) => {
@@ -262,7 +263,7 @@ function initCopyButtons(root: HTMLElement) {
       btn.textContent = ok ? '[ OK ]' : '[ ERROR ]'
       btn.classList.toggle('is-copied', ok)
       setTimeout(() => {
-        btn.textContent = 'COPY'
+        btn.textContent = '[COPY]'
         btn.classList.remove('is-copied')
       }, 1500)
     })
@@ -287,8 +288,8 @@ onMounted(() => nextTick(() => {
     <div v-if="lbOpen" class="lb-backdrop" @click.self="closeLightbox">
       <div class="lb-frame">
         <div class="lb-bar">
-          <span>{{ lbAlt || 'Image' }}</span>
-          <button class="lb-close" aria-label="Close image" @click="closeLightbox">×</button>
+          <span>&gt; viewing: {{ lbAlt || 'Image' }}</span>
+          <button class="lb-close" aria-label="Close image" @click="closeLightbox">[X]</button>
         </div>
         <img :src="lbSrc" :alt="lbAlt" class="lb-image" />
       </div>
@@ -425,14 +426,15 @@ onMounted(() => nextTick(() => {
 }
 
 .article-content :deep(.md-copy-btn) {
-  font-size: inherit;
-  background: transparent;
+  padding: 0;
   border: 0;
+  background: transparent;
+  font-size: inherit;
   color: var(--muted);
   font-weight: bold;
   white-space: nowrap;
   user-select: none;
-  cursor: pointer;
+  cursor: url('/win-95-98/hand.cur'), pointer;
 }
 
 .article-content :deep(.md-copy-btn:hover) {
@@ -504,7 +506,7 @@ onMounted(() => nextTick(() => {
   font-weight: bold;
   font-size: 0.7rem;
   padding: 2px 6px;
-  cursor: pointer;
+  cursor: url('/win-95-98/hand.cur'), pointer;
 }
 
 .article-content :deep(.md-toggle-btn:hover) {
@@ -651,7 +653,7 @@ onMounted(() => nextTick(() => {
   font-weight: bold;
   font-size: 0.75rem;
   padding: 0.6rem 0.8rem;
-  cursor: pointer;
+  cursor: url('/win-95-98/hand.cur'), pointer;
   text-transform: uppercase;
   text-align: center;
   min-width: 60px;
@@ -757,7 +759,7 @@ onMounted(() => nextTick(() => {
   color: var(--fg);
   font-family: var(--font-main);
   font-weight: bold;
-  cursor: pointer;
+  cursor: url('/win-95-98/hand.cur'), pointer;
   padding: 2px 6px;
 }
 

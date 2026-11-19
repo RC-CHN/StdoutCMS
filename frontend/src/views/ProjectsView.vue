@@ -24,7 +24,7 @@ onMounted(loadProjects)
 </script>
 
 <template>
-  <h1 class="projects-title">~/projects/</h1>
+  <h1 class="projects-title">&gt; ls ~/projects/</h1>
 
   <PageState v-if="loading" mode="loading" message="Loading projects…" />
   <PageState v-else-if="error" mode="error" :message="error" retry @retry="loadProjects" />
@@ -42,7 +42,7 @@ onMounted(loadProjects)
       :aria-label="`Open ${p.name} in a new tab`">./open-project.elf</a>
   </div>
 
-  <div class="eof-marker" aria-hidden="true">— EOF —</div>
+  <div class="eof-marker" aria-hidden="true">EOF</div>
   </template>
 </template>
 
@@ -93,5 +93,33 @@ onMounted(loadProjects)
   font-weight: bold;
   color: var(--muted);
   letter-spacing: 5px;
+}
+.eof-marker::before { content: "--- [ "; }
+.eof-marker::after { content: " ] ---"; }
+
+.page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  border-top: 2px dashed var(--border);
+  padding-top: 2rem;
+}
+
+.page-info {
+  font-size: 0.85rem;
+  color: var(--muted);
+  min-width: 60px;
+  text-align: center;
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+button:disabled:hover {
+  background: var(--bg);
+  color: var(--fg);
 }
 </style>

@@ -23,6 +23,14 @@ function toggleSidebar() { sidebarOpen.value = !sidebarOpen.value }
 function closeSidebar() { sidebarOpen.value = false }
 
 /* 侧边栏目录上下文 */
+const promptPath = computed(() => {
+  if (route.meta.requiresAuth) return 'root@stdoutcms:~/admin'
+  if (route.name === 'article') return 'guest@stdoutcms:~/articles'
+  if (route.name === 'about') return 'guest@stdoutcms:~'
+  if (route.name === 'projects') return 'guest@stdoutcms:~/projects'
+  return 'guest@stdoutcms:~'
+})
+
 const listingMode = computed<'root' | 'articles'>(() =>
   route.name === 'article' ? 'articles' : 'root'
 )
@@ -73,8 +81,8 @@ onUnmounted(() => window.removeEventListener('keydown', onEscape))
       <aside id="site-sidebar" class="sidebar" :class="{ open: sidebarOpen }" :inert="isMobile && !sidebarOpen" aria-label="Site navigation">
         <div class="sidebar-inner">
           <div class="prompt-line" aria-hidden="true">
-            <div>{{ route.meta.requiresAuth ? 'root@stdoutcms:~#' : 'guest@stdoutcms:~$' }}</div>
-            <div class="prompt-cmd">{{ listingMode === 'articles' ? 'ls -lh articles/' : 'ls -lh' }}</div>
+            <div class="prompt-path">{{ promptPath }}</div>
+            <div class="prompt-cmd">{{ route.meta.requiresAuth ? '# ls -lh' : '$ ls -lh' }}</div>
           </div>
 
           <FileListing
@@ -145,6 +153,7 @@ onUnmounted(() => window.removeEventListener('keydown', onEscape))
   font-size: 0.82rem;
   line-height: 1.5;
 }
+.prompt-path { color: var(--fg); }
 .prompt-cmd  { color: var(--muted); }
 
 /* ---- 侧边栏遮罩 ---- */

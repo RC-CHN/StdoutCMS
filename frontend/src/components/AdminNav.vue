@@ -7,13 +7,13 @@ const route = useRoute()
 <template>
   <nav class="admin-nav" aria-label="Admin">
     <RouterLink to="/admin" class="admin-nav-item" :class="{ active: !route.name?.toString().includes('projects') && !route.name?.toString().includes('about') && route.name?.toString().startsWith('admin') }">
-      Articles
+      [ articles ]
     </RouterLink>
     <RouterLink to="/admin/projects" class="admin-nav-item" :class="{ active: !!route.name?.toString().startsWith('admin-projects') }">
-      Projects
+      [ projects ]
     </RouterLink>
     <RouterLink to="/admin/about" class="admin-nav-item" :class="{ active: route.name === 'admin-about' }">
-      About
+      [ about ]
     </RouterLink>
   </nav>
 </template>

@@ -1,36 +1,44 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import type { MetaResponse } from '../api/meta'
 
-defineProps<{ meta: MetaResponse | null }>()
+const route = useRoute()
+const props = defineProps<{ meta: MetaResponse | null }>()
+
+const marqueeText = computed(() => {
+  const m = props.meta
+  if (route.name === 'article') {
+    return '*** READING MODE *** CAT ARTICLE.MD *** MARKDOWN ***'
+  }
+  if (route.name === 'about') {
+    return '*** ABOUT *** CAT ABOUT.MD ***'
+  }
+  if (route.name === 'projects') {
+    return '*** PROJECTS *** LS -LH PROJECTS/ ***'
+  }
+  const parts = ['*** STDOUT_CMS_ELF ***']
+  if (m) parts.push(`ARTICLES: ${m.posts}`)
+  if (m) parts.push(`PROJECTS: ${m.projects}`)
+  if (m) parts.push(`UPTIME: ${m.uptime}`)
+  return parts.join(' *** ')
+})
+
+const footerRight = computed(() => {
+  if (props.meta) return `BUILD: ${props.meta.version} | UPTIME: ${props.meta.uptime}`
+  return 'LOADING...'
+})
 </script>
 
 <template>
-  <footer class="site-footer">
-    <ul v-if="meta" class="site-stats" aria-label="Site information">
-      <li>build <b>{{ meta.version }}</b></li>
-      <li>articles <b>{{ meta.posts }}</b></li>
-      <li>projects <b>{{ meta.projects }}</b></li>
-      <li>uptime <b>{{ meta.uptime }}</b></li>
-    </ul>
-    <small>© 2026 Ruochen Pan</small>
-  </footer>
-</template>
+  <div class="marquee-container">
+    <div class="marquee-content">{{ marqueeText }}</div>
+  </div>
 
-<style scoped>
-.site-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem 2rem;
-  padding: 0.65rem 1rem;
-  border-top: 2px solid var(--border);
-  background: var(--bg);
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-.site-stats { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; list-style: none; }
-.site-stats li { white-space: nowrap; }
-.site-stats b { color: var(--fg); }
-.site-footer small { font-size: inherit; }
-</style>
+  <div class="container" style="padding-top: 0; padding-bottom: 2rem;">
+    <footer>
+      <span>(c) 2026 Ruochen_Pan.</span>
+      <span>{{ footerRight }}</span>
+    </footer>
+  </div>
+</template>

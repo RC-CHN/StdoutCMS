@@ -64,6 +64,7 @@ onMounted(fetch)
   <table class="post-table" v-else>
     <thead>
       <tr>
+        <th>PERMISSIONS</th>
         <th>PROJECT</th>
         <th>LANGUAGE</th>
         <th>STATUS</th>
@@ -72,6 +73,7 @@ onMounted(fetch)
     </thead>
     <tbody>
       <tr v-for="p in projects" :key="p.id">
+        <td class="permissions">-rw-r--r--</td>
         <td class="post-name" data-label="PROJECT">
           <a :href="p.url" class="file-link" target="_blank">{{ p.name }}</a>
         </td>
@@ -97,6 +99,9 @@ onMounted(fetch)
     :trigger="feedbackTrigger"
   />
 
+  <div class="admin-prompt" style="margin-top: 2rem;" aria-hidden="true">
+    root@stdoutcms:~/admin#<span class="cursor"></span>
+  </div>
 </template>
 
 <style scoped>
@@ -109,8 +114,7 @@ onMounted(fetch)
 .file-link { color: var(--fg); text-decoration: underline; text-decoration-style: dashed; }
 .file-link:hover { background: var(--fg); color: var(--bg); text-decoration: none; }
 .btn-sm { padding: 4px 12px; font-size: 0.8rem; margin: 0 5px 0 0; display: inline-block; text-align: center; min-width: 50px; line-height: 1.4; vertical-align: middle; box-sizing: border-box; }
-.btn-danger { color: var(--danger); border-color: var(--danger); }
-.btn-danger:hover { background: var(--danger); color: var(--bg); }
+.btn-danger:hover { background: #ff4444; color: #fff; }
 .admin-actions { display: flex; justify-content: space-between; align-items: center; border-top: 2px dashed var(--border); padding-top: 1.5rem; }
 .status-line { color: var(--muted); font-size: 0.85rem; }
 @media (max-width: 600px) { .post-table th, .post-table td { padding: 6px 8px; font-size: 0.8rem; } }
@@ -127,6 +131,7 @@ onMounted(fetch)
   .post-table td { display: flex; flex-direction: column; border: 0; padding: 0.5rem; min-width: 0; }
   .post-table td::before { content: attr(data-label); color: var(--muted); font-size: 0.65rem; }
   .post-table .post-name { grid-column: 1 / -1; grid-row: 1; font-size: 1rem; }
+  .post-table .permissions { display: none; }
   .post-table .row-actions { grid-column: 1 / -1; flex-direction: row; gap: 0.5rem; }
   .row-actions::before { display: none; }
   .row-actions button { flex: 1; min-height: 40px; margin: 0; }

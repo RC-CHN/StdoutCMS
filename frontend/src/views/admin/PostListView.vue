@@ -125,6 +125,9 @@ onMounted(fetchPosts)
     :trigger="feedbackTrigger"
   />
 
+  <div class="admin-prompt" style="margin-top: 2rem;" aria-hidden="true">
+    root@stdoutcms:~/admin#<span class="cursor"></span>
+  </div>
 </template>
 
 <style scoped>
@@ -143,6 +146,19 @@ onMounted(fetchPosts)
   font-size: 0.82rem;
   color: var(--muted);
   margin-bottom: 1rem;
+}
+
+.cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  background: var(--fg);
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 .post-table {
@@ -185,13 +201,13 @@ onMounted(fetchPosts)
 }
 
 .btn-danger {
-  color: var(--danger);
-  border-color: var(--danger);
+  color: #ff4444;
+  border-color: #ff4444;
 }
 
 .btn-danger:hover {
-  background: var(--danger);
-  color: var(--bg);
+  background: #ff4444;
+  color: #fff;
 }
 
 .page-nav {
@@ -236,6 +252,7 @@ button:disabled {
   .post-table td { display: flex; flex-direction: column; border: 0; padding: 0.5rem; min-width: 0; }
   .post-table td::before { content: attr(data-label); color: var(--muted); font-size: 0.65rem; }
   .post-table .post-name { grid-column: 1 / -1; grid-row: 1; font-size: 1rem; }
+  .post-table .permissions { display: none; }
   .post-table .row-actions { grid-column: 1 / -1; flex-direction: row; gap: 0.5rem; }
   .row-actions::before { display: none; }
   .row-actions button { flex: 1; min-height: 40px; margin: 0; }

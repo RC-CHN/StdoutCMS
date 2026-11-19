@@ -48,7 +48,8 @@ watch([messages, loading], () => {
   <div class="mobile-chat">
     <!-- collapsed: tap to expand -->
     <button v-if="!isOpen" class="mobile-chat-trigger" @click="toggle">
-      {{ ctx ? 'ASK AI ABOUT THIS ARTICLE' : 'OPEN AI CHAT' }}
+      <span>[ &gt;_ ASK_AI ]</span>
+      <span v-if="ctx" class="mobile-chat-ctx">about this article</span>
     </button>
 
     <!-- expanded: full chat panel -->
@@ -56,14 +57,15 @@ watch([messages, loading], () => {
       <div class="mobile-chat-header">
         <span>$ ./chat.elf</span>
         <div class="mobile-chat-actions">
-          <button class="mobile-chat-action" @click="clear" aria-label="Clear conversation" :disabled="loading || !messages.length">CLEAR</button>
+          <button class="mobile-chat-action" @click="clear" :disabled="loading || !messages.length" aria-label="Clear conversation">CLR</button>
           <button class="mobile-chat-action" @click="toggle" aria-label="Close AI chat">CLOSE</button>
         </div>
       </div>
 
       <div ref="scrollRef" class="mobile-chat-messages">
         <div v-if="messages.length === 0" class="mobile-chat-empty">
-          {{ ctx ? 'Ask a question about this article.' : 'Ask a question about the blog.' }}
+          [STDOUT_CMS_ELF] ready.<br>
+          Ask a question<span v-if="ctx"> about this article</span>.
         </div>
 
         <div
@@ -72,18 +74,19 @@ watch([messages, loading], () => {
           :class="['mobile-chat-msg', msg.role]"
         >
           <div class="mobile-chat-prefix">
-            {{ msg.role === 'user' ? 'YOU' : 'AI' }}
+            {{ msg.role === 'user' ? '>' : '[AI]' }}
           </div>
           <div
             v-if="msg.role === 'assistant' && !msg.content && loading && i === messages.length - 1"
             class="mobile-chat-body"
           >
-            <span class="mobile-thinking" role="status">[ WAIT ] {{ thinking ? 'Thinking…' : 'Waiting for a reply…' }}</span>
+            <span v-if="thinking" class="mobile-thinking">Thinking…</span>
+            <span v-else class="mobile-cursor">█</span>
           </div>
           <div v-else class="mobile-chat-body" v-html="parseMarkdown(msg.content, true)" />
         </div>
 
-        <div v-if="inputError || error" class="mobile-chat-error" role="alert">
+        <div v-if="inputError || error" role="alert" class="mobile-chat-error">
           [ ERROR ] {{ inputError || error }}
         </div>
       </div>
@@ -94,8 +97,7 @@ watch([messages, loading], () => {
           v-model="input"
           rows="1"
           class="mobile-chat-input"
-          aria-label="Question for the AI assistant"
-          placeholder="Type a question…"
+          placeholder="Type a question…" aria-label="Question for the AI assistant"
           @keydown="handleKeydown"
         />
         <button
@@ -103,7 +105,7 @@ watch([messages, loading], () => {
           :disabled="!canSend"
           @click="handleSend"
         >
-          SEND
+          [ ENTER ]
         </button>
       </div>
     </div>
@@ -136,6 +138,12 @@ watch([messages, loading], () => {
 .mobile-chat-trigger:active {
   background: var(--fg);
   color: var(--bg);
+}
+
+.mobile-chat-ctx {
+  font-size: 0.7rem;
+  font-weight: normal;
+  color: var(--muted);
 }
 
 /* ---- expanded panel ---- */
@@ -178,13 +186,8 @@ watch([messages, loading], () => {
   -webkit-tap-highlight-color: transparent;
 }
 
-.mobile-chat-action:active:not(:disabled) {
+.mobile-chat-action:active {
   opacity: 0.6;
-}
-.mobile-chat-action:disabled {
-  color: var(--bg);
-  opacity: 0.5;
-  cursor: default;
 }
 
 /* ---- messages ---- */
@@ -228,7 +231,7 @@ watch([messages, loading], () => {
 }
 
 .mobile-chat-msg.user .mobile-chat-prefix {
-  color: var(--accent);
+  color: #3b82f6;
 }
 
 .mobile-chat-body :deep(p) {
@@ -267,10 +270,10 @@ watch([messages, loading], () => {
 }
 
 .mobile-chat-error {
-  color: var(--danger);
+  color: #ef4444;
   font-size: 0.78rem;
   padding: 6px 8px;
-  border: 1px dashed currentColor;
+  border: 1px dashed #ef4444;
   margin-top: 6px;
 }
 
@@ -339,7 +342,22 @@ watch([messages, loading], () => {
 }
 
 /* ---- indicators ---- */
+.mobile-cursor {
+  animation: mobile-blink 1s step-end infinite;
+}
+
+@keyframes mobile-blink {
+  50% { opacity: 0; }
+}
+
 .mobile-thinking {
   color: var(--muted);
+  font-style: italic;
+  animation: mobile-think-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes mobile-think-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
 }
 </style>

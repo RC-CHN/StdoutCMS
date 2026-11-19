@@ -75,6 +75,9 @@ async function handleSave() {
     <div class="editor-prompt">
       root@stdoutcms:~/admin# <span class="muted">vim about.md</span>
     </div>
+    <div class="editor-status" :class="{ 'status-error': loadError }" aria-hidden="true">
+      {{ loading ? '[ WAIT ]' : loadError ? '[ ERROR ]' : '[ READY ]' }}
+    </div>
   </div>
 
   <PageState v-if="loading" mode="loading" message="Loading the About page…" />
@@ -132,6 +135,8 @@ async function handleSave() {
 .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem; }
 .editor-prompt { font-weight: bold; font-size: 0.95rem; }
 .muted { color: var(--muted); }
+.editor-status { font-size: 0.8rem; font-weight: bold; padding: 2px 8px; border: 1px solid var(--border); color: var(--muted); }
+.status-error { background: #ff4444; color: #fff !important; }
 .meta-panel { border: 2px solid var(--border); padding: 1rem; margin-bottom: 1.5rem; background: var(--bg); box-shadow: var(--shadow); }
 .meta-row { display: flex; align-items: center; gap: 10px; }
 .meta-row label { font-weight: bold; font-size: 0.85rem; min-width: 60px; color: var(--muted); }

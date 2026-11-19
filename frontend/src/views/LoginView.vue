@@ -105,30 +105,35 @@ async function handleLogin() {
   <div class="login-wrapper">
     <div class="login-box">
       <div class="login-header">
-        <h1>ADMIN SIGN IN</h1>
+        <h2>> ADMIN SIGN IN</h2>
+        <div class="cursor-line">
+          <span>mode: login | </span><span>awaiting credentials…</span><span class="cursor"></span>
+        </div>
       </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-row">
-          <label for="login-username">USERNAME</label>
+          <label for="login-username">USERNAME:</label>
           <input
             id="login-username"
             v-model="username"
             type="text"
+            placeholder="root"
             autocomplete="username"
             :aria-invalid="!!error"
-            :aria-describedby="error ? 'login-error' : undefined"
+            aria-describedby="login-error"
           />
         </div>
         <div class="form-row">
-          <label for="login-password">PASSWORD</label>
+          <label for="login-password">PASSWORD:</label>
           <input
             id="login-password"
             v-model="password"
             type="password"
+            placeholder="********"
             autocomplete="current-password"
             :aria-invalid="!!error"
-            :aria-describedby="error ? 'login-error' : undefined"
+            aria-describedby="login-error"
           />
         </div>
 
@@ -148,13 +153,13 @@ async function handleLogin() {
 
         <div class="form-actions">
           <button type="submit" class="btn" :disabled="loading">
-            {{ loading ? 'SIGNING IN…' : 'SIGN IN' }}
+            {{ loading ? '[ SIGNING IN… ]' : '[ SIGN IN ]' }}
           </button>
         </div>
       </form>
 
       <div class="login-footer">
-        <RouterLink to="/" class="btn btn-sm">← ARTICLES</RouterLink>
+        <RouterLink to="/" class="btn btn-sm">cd ~</RouterLink>
       </div>
     </div>
   </div>
@@ -184,8 +189,14 @@ async function handleLogin() {
   margin-bottom: 1.5rem;
 }
 
-.login-header h1 {
+.login-header h2 {
   font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.cursor-line {
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 .login-form {
@@ -222,11 +233,11 @@ async function handleLogin() {
 }
 
 .error-msg {
-  color: var(--danger);
+  color: #ff4444;
   font-size: 0.85rem;
   margin-bottom: 1rem;
   padding: 10px 12px;
-  border: 1px solid var(--danger);
+  border: 1px solid #ff4444;
   outline: none;
 }
 

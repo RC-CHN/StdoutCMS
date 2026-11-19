@@ -54,14 +54,18 @@ watch(page, fetchPosts, { immediate: true })
 
     <nav class="page-nav" v-if="totalPages > 1" aria-label="Article pages">
       <button class="btn" :disabled="page === 1" @click="goToPage(page - 1)">
-        ← PREVIOUS
+        &lt;&lt; previous
       </button>
       <span class="page-info">{{ page }} / {{ totalPages }}</span>
       <button class="btn" :disabled="page >= totalPages" @click="goToPage(page + 1)">
-        NEXT →
+        next &gt;&gt;
       </button>
     </nav>
   </template>
+
+  <div class="prompt-line" aria-hidden="true">
+    guest@stdoutcms:~/articles$<span class="cursor"></span>
+  </div>
 </template>
 
 <style scoped>
@@ -70,7 +74,9 @@ watch(page, fetchPosts, { immediate: true })
   justify-content: center;
   align-items: center;
   gap: 1rem;
-  margin: 1.5rem 0 2rem;
+  margin: 2rem 0;
+  padding-top: 1.5rem;
+  border-top: 2px dashed var(--border);
 }
 
 .page-info {
@@ -78,5 +84,19 @@ watch(page, fetchPosts, { immediate: true })
   color: var(--muted);
   min-width: 60px;
   text-align: center;
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+button:disabled:hover {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.prompt-line {
+  font-weight: bold;
+  margin-top: 1rem;
 }
 </style>

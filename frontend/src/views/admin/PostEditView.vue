@@ -245,26 +245,25 @@ function clearEditor() {
     </fieldset>
     <UploadStatus :uploads="uploads" />
     <div class="editor-actions">
-      <button class="btn-primary" :disabled="!canSave" aria-describedby="save-status" @click="saveToServer()">{{ saving ? 'SAVING…' : published ? 'SAVE CHANGES' : 'SAVE DRAFT' }}</button>
-      <div id="save-status" class="save-status" role="status">
+      <div class="action-left">
+        <button class="btn-primary" :disabled="!canSave" @click="saveToServer()">{{ saving ? 'SAVING…' : published ? 'SAVE CHANGES' : 'SAVE DRAFT' }}</button>
+        <button v-if="!published" :disabled="!canSave" @click="saveToServer(true)">PUBLISH</button>
+        <button v-else :disabled="!canSave" @click="unpublish">UNPUBLISH</button>
+        <button :disabled="blocked || uploads.uploading.value" @click="clearEditor">CLEAR EDITOR</button>
+      </div>
+      <div class="save-status" role="status">
         <span>{{ dirty ? 'Unsaved on server' : serverSaved ? 'Saved to server' : 'New article' }}</span>
         <span v-if="lastSaved">Local backup: {{ new Date(lastSaved).toLocaleTimeString() }}</span>
         <span v-else-if="serverSaved">Server save: {{ new Date(serverSaved).toLocaleString() }}</span>
       </div>
-      <button v-if="!published" class="publish-action" :disabled="!canSave" @click="saveToServer(true)">PUBLISH</button>
-      <button v-else class="publish-action" :disabled="!canSave" @click="unpublish">UNPUBLISH</button>
     </div>
     <TerminalFeedback :message="feedbackMsg" :type="feedbackType" :duration="feedbackType === 'err' ? 0 : 4000" :trigger="feedbackTrigger" />
-    <div class="editor-footer">
-      <RouterLink to="/admin" class="back-link">BACK TO ARTICLES</RouterLink>
-      <button class="clear-action" :disabled="blocked || uploads.uploading.value" @click="clearEditor">CLEAR EDITOR</button>
-    </div>
+    <RouterLink to="/admin" class="back-link">← Back to articles</RouterLink>
   </template>
 </template>
 
 <style scoped>
 .editor-header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.75rem; margin-bottom: 1.5rem; font-size: 0.8rem; overflow-wrap: anywhere; }
-.muted { color: var(--muted); }
 .publication-state { color: var(--accent); font-weight: bold; }
 .editor-fields { border: 0; min-width: 0; }
 .title-label { display: block; color: var(--muted); font-size: 0.75rem; margin-bottom: 0.4rem; }
@@ -288,31 +287,14 @@ summary span { color: var(--muted); font-weight: normal; }
 .toolbar-actions button { font-size: 0.65rem; padding: 4px 6px; border-width: 1px; }
 .editor-textarea { flex: 1; min-height: 0; width: 100%; padding: 1rem; font-family: var(--font-main); font-size: 0.95rem; line-height: 1.8; resize: none; border: 0; }
 .preview-scroll { flex: 1; min-height: 0; padding: 1rem; overflow: auto; }
-.editor-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "save status publish";
-  align-items: center;
-  gap: 0.5rem 0.85rem;
-  margin-block: 1rem 0.5rem;
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  background: var(--bg);
-}
-.editor-actions button { min-height: 36px; font-size: 0.8rem; }
-.editor-actions .btn-primary { grid-area: save; justify-self: start; }
-.publish-action { grid-area: publish; border-width: 1px; }
-.save-status { grid-area: status; display: flex; flex-direction: column; min-width: 0; font-size: 0.75rem; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere; }
+.editor-actions { position: sticky; bottom: 0; background: var(--bg); border: 1px solid var(--border); border-top: 2px solid var(--border); padding: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; z-index: 10; margin-block: 1rem; }
+.action-left { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.action-left button { font-size: 0.75rem; }
+.save-status { display: flex; flex-direction: column; font-size: 0.7rem; color: var(--muted); }
 .recovery-notice { padding: 1rem; border: 2px solid var(--accent); margin-bottom: 1rem; }
 .recovery-notice .state-actions { margin-top: 0.75rem; }
 .error-notice { color: var(--danger); margin-bottom: 1rem; }
-.editor-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1.5rem; }
-.back-link, .clear-action { display: inline-flex; align-items: center; min-height: 44px; font-size: 0.8rem; color: var(--muted); text-underline-offset: 0.2em; }
-.clear-action { border: 0; padding: 0.25rem; background: transparent; font-weight: normal; text-decoration: underline; }
-.clear-action:enabled:is(:hover, :focus-visible) { color: var(--danger); }
+.back-link { display: inline-block; margin-block: 1rem; font-size: 0.85rem; color: var(--muted); }
 @media (max-width: 768px) {
   .meta-row { flex-wrap: wrap; }
   .meta-row label { width: 100%; }
@@ -322,12 +304,8 @@ summary span { color: var(--muted); font-weight: normal; }
   .editor-area { height: 60dvh; min-height: 350px; }
   .editor-textarea { font-size: 16px; padding: 0.75rem; }
   .toolbar-actions button { min-height: 36px; }
-  .editor-actions {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "save publish" "status status";
-    padding: 0.5rem 0.65rem max(0.5rem, env(safe-area-inset-bottom));
-  }
-  .editor-actions button { min-height: 44px; }
-  .save-status { flex-direction: row; flex-wrap: wrap; gap: 0.15rem 0.75rem; }
+  .editor-actions { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+  .action-left { width: 100%; }
+  .action-left button { flex: 1; padding-inline: 6px; }
 }
 </style>

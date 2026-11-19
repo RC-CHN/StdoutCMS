@@ -69,8 +69,8 @@ onUnmounted(() => {
       <div class="status-line" aria-hidden="true">{{ displayed }}<span class="cursor"></span></div>
     </div>
     <div class="header-actions">
-      <button v-if="isLoggedIn" class="logout-btn" @click="handleLogout">Sign out</button>
-      <button class="theme-btn" @click="toggleTheme" :aria-label="dark ? 'Switch to light theme' : 'Switch to dark theme'">
+      <button v-if="isLoggedIn" class="logout-btn" @click="handleLogout" aria-label="Sign out"><span class="wide-label">[ SIGN OUT ]</span><span class="compact-label">EXIT</span></button>
+      <button class="theme-btn" @click="toggleTheme" :aria-label="dark ? 'Switch to light theme' : 'Switch to dark theme'" :aria-pressed="dark">
         <span class="wide-label">[ {{ dark ? 'LIGHT' : 'DARK' }} ]</span>
         <span class="compact-label" aria-hidden="true">{{ dark ? '☀' : '◐' }}</span>
       </button>

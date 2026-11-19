@@ -75,13 +75,13 @@ onMounted(loadPost)
     <article v-else-if="post">
       <button class="back-link" @click="backToList">← ARTICLES</button>
       <header class="article-header">
-        <h1 class="article-title">{{ post.title }}</h1>
         <div class="article-meta">
           <span>{{ post.author }}</span>
           <time :datetime="post.createdAt">{{ post.createdAt?.slice(0, 10) || '—' }}</time>
           <span v-if="post.readTime">{{ post.readTime }} READ</span>
-          <span v-if="post.tags?.length" class="article-tags">{{ post.tags.join(' / ') }}</span>
         </div>
+        <h1 class="article-title">{{ post.title }}</h1>
+        <div v-if="post.tags?.length" class="article-tags">{{ post.tags.join(' / ') }}</div>
       </header>
       <details v-if="headings.length > 1" class="article-toc">
         <summary>CONTENTS <span>{{ headings.length }} sections</span></summary>
@@ -112,10 +112,10 @@ onMounted(loadPost)
 <style scoped>
 .back-link { border: 0; padding: 0.5rem 0; margin-bottom: 1rem; font-size: 0.75rem; color: var(--muted); }
 .article-header { margin-bottom: 2rem; }
-.article-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; color: var(--muted); font-size: 0.75rem; margin-top: 0.75rem; overflow-wrap: anywhere; }
+.article-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; color: var(--muted); font-size: 0.75rem; margin-bottom: 0.75rem; }
 .article-meta time { white-space: nowrap; }
 .article-title { font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.4; overflow-wrap: anywhere; }
-.article-tags { flex-basis: 100%; }
+.article-tags { color: var(--muted); font-size: 0.75rem; margin-top: 0.75rem; }
 .article-toc { border-block: 1px solid var(--border); padding: 0.8rem 0; margin-bottom: 2rem; font-size: 0.85rem; }
 .article-toc summary { font-weight: bold; }
 .article-toc summary span { color: var(--muted); font-size: 0.75rem; margin-left: 0.75rem; }
@@ -126,16 +126,4 @@ onMounted(loadPost)
 .article-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
 .article-actions button { font-size: 0.75rem; min-height: 40px; }
 .share-status { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
-
-@media (max-width: 768px) {
-  .back-link { min-height: 44px; margin-bottom: 0.125rem; }
-  .article-header { margin-bottom: 1rem; }
-  .article-title { line-height: 1.25; }
-  .article-meta { margin-top: 0.45rem; gap: 0.2rem 0.8rem; line-height: 1.5; }
-  .article-tags { flex-basis: auto; }
-  .article-toc { margin-bottom: 1rem; padding: 0; }
-  .article-toc summary, .article-toc a { min-height: 44px; padding-block: 0.7rem; line-height: 1.5; }
-  .article-toc ol { margin-top: 0; }
-  .reading-page :deep(.article-content > :first-child) { margin-top: 0; }
-}
 </style>

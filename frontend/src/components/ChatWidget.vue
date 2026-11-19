@@ -126,10 +126,9 @@ onUnmounted(() => {
     :style="{ left: pos.x + 'px', top: pos.y + 'px' }"
     @mousedown="onTriggerMouseDown"
     @click="onTriggerClick"
-    title="Open AI chat"
-    aria-label="Open AI chat"
+    title="Open AI chat" aria-label="Open AI chat"
   >
-    AI
+    [&gt;_]
   </button>
 
   <!-- 聊天窗口 -->
@@ -146,15 +145,16 @@ onUnmounted(() => {
     >
       <span>$ ./chat.elf</span>
       <div class="chat-header-actions">
-        <button class="chat-action" @click="clear" aria-label="Clear conversation" :disabled="loading || !messages.length">CLEAR</button>
-        <button class="chat-action" @click="toggle" aria-label="Close AI chat">CLOSE</button>
+        <button class="chat-action" @click="clear" :disabled="loading || !messages.length" aria-label="Clear conversation" title="clear session">[CLR]</button>
+        <button class="chat-action" @click="toggle" aria-label="Close AI chat">[×]</button>
       </div>
     </div>
 
     <!-- 消息区 -->
     <div ref="scrollRef" class="chat-messages">
       <div v-if="messages.length === 0" class="chat-empty">
-        {{ ctx ? 'Ask a question about this article.' : 'Ask a question about the blog.' }}
+        [STDOUT_CMS_ELF] ready.<br>
+        Ask a question<span v-if="ctx"> about this article</span>.
       </div>
 
       <div
@@ -163,34 +163,34 @@ onUnmounted(() => {
         :class="['chat-msg', msg.role]"
       >
         <div class="chat-msg-prefix">
-          {{ msg.role === 'user' ? 'YOU' : 'AI' }}
+          {{ msg.role === 'user' ? '>' : '[STDOUT_CMS_ELF]' }}
         </div>
         <!-- 最后一个 assistant 空内容 + 加载中：思考 / 光标 -->
         <div
           v-if="msg.role === 'assistant' && !msg.content && loading && i === messages.length - 1"
           class="chat-msg-body"
         >
-          <span class="thinking-indicator" role="status">[ WAIT ] {{ thinking ? 'Thinking…' : 'Waiting for a reply…' }}</span>
+          <span v-if="thinking" class="thinking-indicator">Thinking…</span>
+          <span v-else class="typing-cursor">█</span>
         </div>
         <div v-else class="chat-msg-body" v-html="parseMarkdown(msg.content)" />
       </div>
 
       <!-- 错误 -->
-      <div v-if="inputError || error" class="chat-error" role="alert">
+      <div v-if="inputError || error" role="alert" class="chat-error">
         [ ERROR ] {{ inputError || error }}
       </div>
     </div>
 
     <!-- 输入区 -->
     <div class="chat-input-area">
-      <span class="chat-prompt" aria-hidden="true">&gt;</span>
+      <span class="chat-prompt">guest@stdoutcms:~$</span>
       <textarea
         ref="inputRef"
         v-model="input"
         rows="1"
         class="chat-input"
-        aria-label="Question for the AI assistant"
-        placeholder="Type a question…"
+        placeholder="Type a question…" aria-label="Question for the AI assistant"
         @keydown="handleKeydown"
       />
       <button
@@ -198,7 +198,7 @@ onUnmounted(() => {
         :disabled="!canSend"
         @click="handleSend"
       >
-        SEND
+        [ENTER]
       </button>
     </div>
   </div>
@@ -217,7 +217,7 @@ onUnmounted(() => {
   font-size: 0.9rem;
   font-weight: bold;
   color: var(--fg);
-  cursor: grab;
+  cursor: url('/win-95-98/relocate.cur'), move;
   z-index: 100;
   display: flex;
   align-items: center;
@@ -228,7 +228,6 @@ onUnmounted(() => {
   color: var(--bg);
 }
 .chat-trigger.dragging {
-  cursor: grabbing;
   background: var(--fg);
   color: var(--bg);
 }
@@ -260,11 +259,10 @@ onUnmounted(() => {
   font-weight: bold;
   font-size: 0.8rem;
   flex-shrink: 0;
-  cursor: grab;
+  cursor: url('/win-95-98/relocate.cur'), move;
   user-select: none;
 }
 .chat-header.dragging {
-  cursor: grabbing;
   opacity: 0.9;
 }
 .chat-header-actions {
@@ -277,16 +275,11 @@ onUnmounted(() => {
   color: var(--bg);
   font-family: var(--font-main);
   font-size: 0.75rem;
-  cursor: pointer;
+  cursor: url('/win-95-98/hand.cur'), pointer;
   padding: 0;
 }
-.chat-action:hover:not(:disabled) {
+.chat-action:hover {
   opacity: 0.7;
-}
-.chat-action:disabled {
-  color: var(--bg);
-  opacity: 0.5;
-  cursor: default;
 }
 
 /* ---- 消息区 ---- */
@@ -322,7 +315,7 @@ onUnmounted(() => {
   user-select: none;
 }
 .chat-msg.user .chat-msg-prefix {
-  color: var(--accent);
+  color: #3b82f6;
 }
 .chat-msg-body :deep(p) {
   margin: 0.4rem 0;
@@ -356,10 +349,10 @@ onUnmounted(() => {
 }
 
 .chat-error {
-  color: var(--danger);
+  color: #ef4444;
   font-size: 0.82rem;
   padding: 8px 10px;
-  border: 1px dashed currentColor;
+  border: 1px dashed #ef4444;
   margin-top: 8px;
 }
 
@@ -407,7 +400,7 @@ onUnmounted(() => {
   font-size: 0.75rem;
   padding: 4px 10px;
   white-space: nowrap;
-  cursor: pointer;
+  cursor: url('/win-95-98/hand.cur'), pointer;
   background: var(--bg);
   color: var(--fg);
   border: 2px solid var(--border);
@@ -427,9 +420,23 @@ onUnmounted(() => {
   transform: none;
 }
 
+/* ---- 打字机光标 ---- */
+.typing-cursor {
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
 /* ---- 思考中 ---- */
 .thinking-indicator {
   color: var(--muted);
+  font-style: italic;
+  animation: think-pulse 1.5s ease-in-out infinite;
+}
+@keyframes think-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
 }
 
 /* ---- 响应式 ---- */
